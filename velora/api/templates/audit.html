@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block content %}
+<h1>Audit log</h1>
+<p class="lede">Append-only record of authorization acknowledgements, scope decisions,
+  blocked requests, AI invocations and report generation. Blocked out-of-scope requests
+  appear here as <code>OUT_OF_SCOPE_REQUEST_BLOCKED</code>.</p>
+
+<div class="charts">
+  <div class="card"><h3>Actions</h3>
+    {{ charts.category_bars(by_action, max_slots=8, label="audit actions")|safe }}</div>
+</div>
+
+<h2>Most recent {{ entries|length }} entries</h2>
+<div class="tw"><table>
+  <thead><tr><th>Time</th><th>Action</th><th>Actor</th><th>Reference</th>
+    <th>Detail</th></tr></thead>
+  <tbody>
+  {% for e in entries %}
+    <tr><td class="mono">{{ e.created_at.strftime("%Y-%m-%d %H:%M:%S") }}</td>
+      <td class="mono">{{ e.action }}</td><td>{{ e.actor or "—" }}</td>
+      <td class="mono">{{ e.target_ref|shorten(40) or "—" }}</td>
+      <td class="mono">{{ e.detail|string|shorten(90) }}</td></tr>
+  {% else %}
+    <tr><td colspan="5" class="empty">Audit log is empty.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

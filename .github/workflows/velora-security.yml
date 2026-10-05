@@ -1,0 +1,146 @@
+# Velora security gate for GitHub Actions.
+#
+# SCOPE AND AUTHORIZATION
+# -----------------------
+# This workflow scans an application that the pipeline itself brings up, inside the
+# runner, on loopback. That is the only target it is safe to point at by default: the
+# runner owns it, it exists for the length of the job, and nothing outside the job can
+# reach it.
+#
+# If you change VELORA_TARGET to a deployed environment, you are asserting that your
+# organisation has written authorization to test that host. Velora enforces scope on
+# every request, but it cannot know whether you are allowed to test a given system —
+# only you can. Never point this workflow at a third party, a shared staging
+# environment you do not own, or production without a signed authorization.
+#
+# EXIT CODES
+#   0  PASS   — no policy violation
+#   1  FAIL   — the gate policy was violated; the build fails
+#   2  ERROR  — the scan is missing or incomplete, or the policy is invalid.
+#              An ERROR never passes the build silently.
+name: Velora security gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 1"
+
+permissions:
+  contents: read
+  security-events: write   # required only for the SARIF upload step
+
+jobs:
+  security-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      # The application under test. Brought up by this job, on loopback.
+      VELORA_TARGET: http://127.0.0.1:8080/
+      VELORA_PROFILE: safe
+      VELORA_DATA_DIR: ${{ github.workspace }}/.velora
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Velora
+        run: |
+          python -m pip install --upgrade pip
+          pip install .
+
+      - name: Start the application under test
+        run: |
+          # Replace this with however your application starts. It must listen on
+          # 127.0.0.1 so the scan cannot leave the runner.
+          #   docker compose up -d app
+          #   ./scripts/serve.sh &
+          echo "::error::configure a start step for your application" && exit 1
+
+      - name: Wait for the application
+        run: |
+          for _ in $(seq 1 30); do
+            curl -fsS "$VELORA_TARGET" >/dev/null 2>&1 && exit 0
+            sleep 2
+          done
+          echo "::error::application did not become reachable at $VELORA_TARGET"
+          exit 1
+
+      - name: Run the Velora scan
+        run: |
+          velora scan \
+            --target "$VELORA_TARGET" \
+            --profile "$VELORA_PROFILE" \
+            --scope 127.0.0.1 \
+            --allow-private \
+            --operator "github-actions" \
+            --i-am-authorized \
+            --scan-id-file "$RUNNER_TEMP/velora-scan-id"
+          echo "VELORA_SCAN_ID=$(cat "$RUNNER_TEMP/velora-scan-id")" >> "$GITHUB_ENV"
+
+      - name: Generate reports
+        if: always()
+        run: |
+          velora report --scan "$VELORA_SCAN_ID" \
+            --format sarif --format json --format html \
+            --output-dir "$GITHUB_WORKSPACE/velora-reports"
+
+      - name: Upload the Velora reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: velora-reports
+          path: velora-reports/
+          if-no-files-found: warn
+
+      - name: Upload SARIF to code scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: velora-reports/
+          category: velora
+        continue-on-error: true   # a code-scanning outage must not mask the gate below
+
+      # The gate is the last step so the reports above are always produced, even on a
+      # failing build. `velora gate evaluate` exits 1 on violation and 2 on error, and
+      # the job fails on either.
+      - name: Evaluate the security gate
+        run: |
+          velora gate evaluate \
+            --scan "$VELORA_SCAN_ID" \
+            --policy .velora/gate.yaml \
+            --output "$GITHUB_WORKSPACE/velora-reports/gate.json"
+
+      - name: Summarise the gate result
+        if: always()
+        run: |
+          if [ -f velora-reports/gate.json ]; then
+            {
+              echo "### Velora security gate"
+              echo ""
+              python - <<'PY'
+import json
+with open("velora-reports/gate.json") as fh:
+    data = json.load(fh)
+print(f"**{data['decision']}** — {data['summary']}")
+print()
+violations = data.get("violations") or []
+if violations:
+    print("| Rule | Severity | Detail |")
+    print("| --- | --- | --- |")
+    for v in violations:
+        print(f"| {v.get('rule','')} | {v.get('severity') or '-'} | {v.get('detail','')} |")
+else:
+    print("No policy violations.")
+print()
+print("A passing gate means no configured policy rule was violated. It does not "
+      "mean the application is secure: Velora reports only what its checks observed.")
+PY
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi

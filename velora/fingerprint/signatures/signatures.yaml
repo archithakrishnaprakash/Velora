@@ -1,0 +1,87 @@
+# Technology fingerprint signatures. Each signature yields a detection with evidence.
+# match types: header (name/regex on a header value), header_present, body (regex),
+# cookie (cookie name present). Confidence in [0,1].
+- name: nginx
+  categories: [web-server]
+  matches:
+    - {type: header, header: Server, regex: "(?i)nginx(?:/([0-9.]+))?", version_group: 1, confidence: 0.9}
+- name: Apache httpd
+  categories: [web-server]
+  matches:
+    - {type: header, header: Server, regex: "(?i)apache(?:/([0-9.]+))?", version_group: 1, confidence: 0.9}
+- name: Microsoft IIS
+  categories: [web-server]
+  matches:
+    - {type: header, header: Server, regex: "(?i)microsoft-iis(?:/([0-9.]+))?", version_group: 1, confidence: 0.9}
+- name: Express
+  categories: [web-framework]
+  matches:
+    - {type: header, header: X-Powered-By, regex: "(?i)express", confidence: 0.85}
+- name: PHP
+  categories: [language]
+  matches:
+    - {type: header, header: X-Powered-By, regex: "(?i)php(?:/([0-9.]+))?", version_group: 1, confidence: 0.85}
+    - {type: cookie, cookie: PHPSESSID, confidence: 0.8}
+- name: ASP.NET
+  categories: [web-framework]
+  matches:
+    - {type: header, header: X-Powered-By, regex: "(?i)asp\\.net", confidence: 0.85}
+    - {type: header_present, header: X-AspNet-Version, confidence: 0.9}
+- name: Node.js
+  categories: [runtime]
+  matches:
+    - {type: header, header: X-Powered-By, regex: "(?i)node", confidence: 0.7}
+- name: React
+  categories: [javascript-framework]
+  matches:
+    - {type: body, regex: "(?i)(data-reactroot|react(?:-dom)?(?:\\.production)?\\.min\\.js)", confidence: 0.7}
+- name: jQuery
+  categories: [javascript-library]
+  matches:
+    - {type: body, regex: "(?i)jquery(?:[.-]([0-9.]+))?(?:\\.min)?\\.js", version_group: 1, confidence: 0.75}
+- name: WordPress
+  categories: [cms]
+  matches:
+    - {type: body, regex: "(?i)/wp-(content|includes)/", confidence: 0.85}
+    - {type: header, header: Link, regex: "(?i)wp-json", confidence: 0.7}
+- name: Cloudflare
+  categories: [cdn, security]
+  matches:
+    - {type: header_present, header: CF-RAY, confidence: 0.9}
+    - {type: header, header: Server, regex: "(?i)cloudflare", confidence: 0.85}
+- name: Python
+  categories: [runtime]
+  matches:
+    - {type: header, header: Server, regex: "(?i)python/([0-9][0-9A-Za-z.\\-]*)", version_group: 1, confidence: 0.8}
+    - {type: header, header: X-Powered-By, regex: "(?i)python/([0-9][0-9A-Za-z.\\-]*)", version_group: 1, confidence: 0.8}
+- name: Gunicorn
+  categories: [web-server]
+  matches:
+    - {type: header, header: Server, regex: "(?i)gunicorn(?:/([0-9.]+))?", version_group: 1, confidence: 0.9}
+- name: Werkzeug
+  categories: [web-server]
+  matches:
+    - {type: header, header: Server, regex: "(?i)werkzeug(?:/([0-9.]+))?", version_group: 1, confidence: 0.9}
+- name: Caddy
+  categories: [web-server]
+  matches:
+    - {type: header, header: Server, regex: "(?i)caddy(?:/([0-9.]+))?", version_group: 1, confidence: 0.9}
+- name: LiteSpeed
+  categories: [web-server]
+  matches:
+    - {type: header, header: Server, regex: "(?i)litespeed(?:/([0-9.]+))?", version_group: 1, confidence: 0.9}
+- name: Django
+  categories: [web-framework]
+  matches:
+    - {type: cookie, cookie: csrftoken, confidence: 0.6}
+    - {type: cookie, cookie: sessionid, confidence: 0.5}
+- name: Ruby on Rails
+  categories: [web-framework]
+  matches:
+    - {type: header, header: X-Powered-By, regex: "(?i)phusion passenger", confidence: 0.8}
+    - {type: cookie, cookie: _rails_session, confidence: 0.7}
+- name: Java servlet container
+  categories: [runtime]
+  matches:
+    - {type: cookie, cookie: JSESSIONID, confidence: 0.7}
+    - {type: header, header: Server, regex: "(?i)(tomcat|jetty|wildfly)(?:/([0-9.]+))?", version_group: 2, confidence: 0.85}

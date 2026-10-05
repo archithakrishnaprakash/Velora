@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block content %}
+<h1>CI/CD security gate</h1>
+<p class="lede">The gate exit-code contract is fixed: <code>0</code> PASS,
+  <code>1</code> FAIL, <code>2</code> ERROR. A missing or incomplete scan is an ERROR —
+  it never silently passes a pipeline.</p>
+
+<div class="kpis">
+  {{ m.kpi("Evaluations", results|length) }}
+  {{ m.kpi("Pass", by_decision.get("PASS", 0), "var(--good)") }}
+  {{ m.kpi("Fail", by_decision.get("FAIL", 0), "var(--critical)") }}
+  {{ m.kpi("Error", by_decision.get("ERROR", 0), "var(--warning)") }}
+</div>
+
+<div class="charts">
+  <div class="card"><h3>Decisions</h3>
+    {{ charts.category_bars(by_decision, label="gate decisions")|safe }}</div>
+</div>
+
+<h2>Evaluations</h2>
+<div class="tw"><table>
+  <thead><tr><th>ID</th><th>Scan</th><th>Decision</th><th class="num">Exit</th>
+    <th class="num">Violations</th><th>Summary</th><th>Created</th></tr></thead>
+  <tbody>
+  {% for g in results %}
+    <tr><td class="mono">{{ g.id }}</td>
+      <td class="mono"><a href="/scans/{{ g.scan_id }}">{{ g.scan_id }}</a></td>
+      <td><span class="tag {{ 'ok' if g.decision.value == 'PASS' else ('bad' if g.decision.value == 'FAIL' else 'warn') }}">{{ g.decision.value }}</span></td>
+      <td class="num">{{ g.decision.exit_code }}</td>
+      <td class="num">{{ g.violations|length }}</td>
+      <td>{{ g.summary|shorten(80) }}</td>
+      <td class="mono">{{ g.created_at.strftime("%Y-%m-%d %H:%M") }}</td></tr>
+  {% else %}
+    <tr><td colspan="7" class="empty">No gate evaluations. Run
+      <code>velora gate check --scan &lt;id&gt; --policy velora-gate.yaml</code>.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

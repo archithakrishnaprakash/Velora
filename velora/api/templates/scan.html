@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block content %}
+<p><a href="/scans">← Scans</a></p>
+<h1>Scan {{ scan.id }}</h1>
+<p class="lede">
+  <span class="tag">{{ scan.profile.value }}</span>
+  <span class="tag">{{ scan.status.value }}</span>
+  <span class="tag {{ 'ok' if scan.authorization_ack else 'bad' }}">
+    {{ "authorization acknowledged" if scan.authorization_ack else "no authorization ack" }}</span>
+  {% if scan.is_retest %}<span class="tag">retest</span>{% endif %}
+  · target {{ target.name if target else scan.target_id }}
+  · operator {{ scan.operator or "—" }}
+</p>
+
+{% if scan.status.value != "completed" %}
+<div class="banner warn">This scan did not complete. Its results are partial and must
+  not be read as a clean assessment.</div>
+{% endif %}
+
+<div class="kpis">
+  {{ m.kpi("Findings", findings|length) }}
+  {{ m.kpi("Endpoints", endpoints|length) }}
+  {{ m.kpi("Technologies", technologies|length) }}
+  {{ m.kpi("Graph edges", edges|length) }}
+  {{ m.kpi("Critical", by_sev.get("Critical", 0), "var(--critical)") }}
+  {{ m.kpi("High", by_sev.get("High", 0), "var(--serious)") }}
+</div>
+
+<div class="charts">
+  <div class="card"><h3>Findings by severity</h3>
+    {{ charts.severity_bars(by_sev)|safe }}</div>
+  <div class="card"><h3>Lifecycle</h3>
+    {{ charts.lifecycle_donut(by_status)|safe }}{{ m.legend_for(by_status) }}</div>
+</div>
+
+{% if gate %}
+<div class="banner {{ 'warn' if gate.decision.value != 'PASS' else 'info' }}">
+  CI/CD gate: <b>{{ gate.decision.value }}</b> (exit {{ gate.decision.exit_code }}) —
+  {{ gate.summary }}</div>
+{% endif %}
+
+<h2>Findings ({{ findings|length }})</h2>
+<div class="tw"><table>
+  <thead><tr><th class="num">Priority</th><th>Severity</th><th>Title</th><th>Category</th>
+    <th>Endpoint</th><th>Status</th><th>Detector</th></tr></thead>
+  <tbody>
+  {% for f in findings %}
+    <tr><td class="num"><b>{{ "%.0f"|format(f.priority_score or 0) }}</b></td>
+      <td><span class="pill {{ f.severity.value|sevclass }}">{{ f.severity.value }}</span></td>
+      <td><a href="/findings/{{ f.id }}">{{ f.title|shorten(56) }}</a></td>
+      <td>{{ f.category }}</td><td class="mono">{{ f.endpoint|shorten(40) }}</td>
+      <td>{{ f.status.value }}</td><td class="mono">{{ f.scanner|shorten(24) }}</td></tr>
+  {% else %}
+    <tr><td colspan="7" class="empty">No findings. This is not evidence that the target
+      is secure — it means the checks that ran did not detect anything.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+
+<h2>Attack surface</h2>
+<p class="lede">{{ hosts|length }} host(s) · {{ endpoints|length }} endpoint(s) ·
+  {{ technologies|length }} technology fingerprint(s) · graph:
+  {{ nodes|length }} node(s), {{ edges|length }} edge(s).
+  <a href="/attack-surface?scan={{ scan.id }}">Full attack surface →</a>
+  <a href="/attack-graph?scan={{ scan.id }}">Attack graph →</a></p>
+{% set hyp = edges|selectattr("hypothesis")|list %}
+{% if hyp %}
+<div class="banner warn">{{ hyp|length }} edge(s) are reasoning hypotheses, not observed
+  facts. They require manual validation before being reported as an attack path.</div>
+{% endif %}
+
+<h2>Regression deltas ({{ regressions|length }})</h2>
+<div class="tw"><table>
+  <thead><tr><th>Change</th><th>Subject</th><th>Severity</th><th>Baseline</th></tr></thead>
+  <tbody>
+  {% for x in regressions %}
+    <tr><td><span class="tag">{{ x.change.value }}</span></td>
+      <td class="mono">{{ x.subject|shorten(56) }}</td>
+      <td>{{ x.severity or "—" }}</td><td class="mono">{{ x.previous_scan_id or "—" }}</td></tr>
+  {% else %}
+    <tr><td colspan="4" class="empty">No baseline comparison recorded for this scan.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+
+<h2>Scan events ({{ events|length }})</h2>
+<div class="tw"><table>
+  <thead><tr><th>Time</th><th>Level</th><th>Event</th><th>Message</th></tr></thead>
+  <tbody>
+  {% for e in events %}
+    <tr><td class="mono">{{ e.created_at.strftime("%H:%M:%S") }}</td>
+      <td>{{ e.level }}</td><td class="mono">{{ e.event }}</td>
+      <td>{{ e.message|shorten(96) }}</td></tr>
+  {% else %}
+    <tr><td colspan="4" class="empty">No events recorded.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+
+<h2>Reports</h2>
+<div class="tw"><table>
+  <thead><tr><th>Report</th><th>Formats</th><th>Paths</th><th>Created</th></tr></thead>
+  <tbody>
+  {% for r in reports %}
+    <tr><td class="mono">{{ r.id }}</td>
+      <td>{% for f in r.formats %}<span class="tag">{{ f }}</span> {% endfor %}</td>
+      <td class="mono">{% for k, v in r.paths.items() %}{{ v }}<br>{% endfor %}</td>
+      <td class="mono">{{ r.created_at.strftime("%Y-%m-%d %H:%M") }}</td></tr>
+  {% else %}
+    <tr><td colspan="4" class="empty">No reports generated for this scan.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+
+<p class="lede">Machine-readable: <code>/api/scans/{{ scan.id }}/graph</code> ·
+  <code>/api/scans/{{ scan.id }}/sarif</code> ·
+  <code>/api/findings?scan={{ scan.id }}</code></p>
+{% endblock %}

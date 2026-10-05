@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block content %}
+<h1>Business-logic workflows</h1>
+<p class="lede">A workflow is a state machine with a security assertion on each step.
+  Velora refuses destructive verbs (DELETE, CONNECT, TRACE) and will not execute a
+  workflow that has not been explicitly authorized.</p>
+
+{% for row in rows %}
+  {% set w = row.workflow %}
+  <h2>{{ w.name }}
+    <span class="tag {{ 'ok' if w.authorized else 'bad' }}">
+      {{ "authorized" if w.authorized else "not authorized" }}</span></h2>
+  <p class="lede">{{ w.description or "No description." }}
+    Initial state: <code>{{ w.initial_state }}</code>{% if w.identity_id %} ·
+    identity <code>{{ w.identity_id }}</code>{% endif %}</p>
+  <div class="tw"><table>
+    <thead><tr><th class="num">#</th><th>Step</th><th>Method</th><th>URL</th>
+      <th>Transition</th><th>Assertion</th><th>Outcome</th><th class="num">Observed</th></tr></thead>
+    <tbody>
+    {% for s in row.steps %}
+      <tr><td class="num">{{ s.order_index }}</td><td>{{ s.name }}</td>
+        <td>{{ s.method }}</td><td class="mono">{{ s.url|shorten(44) }}</td>
+        <td class="mono">{{ s.from_state }} → {{ s.to_state }}</td>
+        <td>{{ s.assertion|shorten(60) or "—" }}</td>
+        <td><span class="tag {{ 'ok' if s.outcome.value == 'PASSED' else ('bad' if s.outcome.value == 'ASSERTION_FAILED' else '') }}">
+          {{ s.outcome.value }}</span></td>
+        <td class="num">{{ s.observed_status if s.observed_status is not none else "—" }}</td></tr>
+    {% else %}
+      <tr><td colspan="8" class="empty">No steps defined.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+{% else %}
+  <div class="banner info">No workflows defined. Load one with
+    <code>velora workflow load --file examples/labs/workflow-checkout.yaml</code>.</div>
+{% endfor %}
+{% endblock %}

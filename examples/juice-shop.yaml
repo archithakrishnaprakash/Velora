@@ -1,0 +1,28 @@
+# Example target/scope for OWASP Juice Shop running in an isolated lab.
+# Start Juice Shop locally (Docker):
+#   docker run --rm -p 3000:3000 bkimminich/juice-shop
+# Then add it to a lab host entry (e.g. juice-shop.local -> 127.0.0.1) or use the URL directly.
+target:
+  name: Juice Shop Lab
+  url: http://juice-shop.local:3000/
+  owner: security-lab
+  authorization_status: LAB_ONLY
+  authorization_note: "Isolated local lab instance; intentionally vulnerable app."
+
+scope:
+  allowed_domains: [juice-shop.local]
+  allowed_ports: [3000, 80, 443]
+  allowed_schemes: [http, https]
+  excluded_paths: []
+  max_requests: 800
+  max_concurrency: 5
+  request_delay: 0.2
+  redirect_policy: same-scope
+  allow_private_targets: true   # lab instance on loopback/RFC1918
+
+scan:
+  profile: lab
+
+# CLI equivalent:
+#   velora scan --target http://juice-shop.local:3000/ --profile lab \
+#     --scope juice-shop.local --allow-private --operator you --i-am-authorized

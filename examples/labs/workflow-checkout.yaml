@@ -1,0 +1,45 @@
+# Business-logic workflow for the bundled Velora lab app.
+# The lab app deliberately does NOT verify that the cart was filled before checkout,
+# so the step-skip probe has a real ordering flaw to find.
+name: labshop-checkout
+description: Authenticate, add an item to the cart, then check out.
+identity: alice
+authorized: true
+initial_state: anonymous
+
+steps:
+  - name: login
+    method: POST
+    url: http://127.0.0.1:8099/login
+    from_state: anonymous
+    to_state: authenticated
+    # NOTE: not marked required. In this fixture the identity is carried by a static
+    # bearer header, so omitting the login *request* does not remove authentication.
+    # Marking it required would make the skip probe report a bypass that is an artifact
+    # of the fixture rather than a real ordering flaw.
+    required: false
+    assertion: authentication must succeed before any cart operation
+    assert_status_in: [200, 302]
+    headers:
+      Authorization: "Bearer alice-token"
+
+  - name: add-item
+    method: POST
+    url: http://127.0.0.1:8099/cart/add
+    from_state: authenticated
+    to_state: cart_filled
+    required: true
+    assertion: an item must be in the cart before checkout is permitted
+    assert_status_in: [200]
+    headers:
+      Authorization: "Bearer alice-token"
+
+  - name: checkout
+    method: POST
+    url: http://127.0.0.1:8099/checkout
+    from_state: cart_filled
+    to_state: ordered
+    assertion: checkout must be refused unless every required prior step completed
+    assert_status_in: [200]
+    headers:
+      Authorization: "Bearer alice-token"

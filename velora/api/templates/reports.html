@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block content %}
+<h1>Reports</h1>
+<p class="lede">Reports are generated from stored findings and evidence. They never
+  contain credentials, API keys or raw secret material, and they state explicitly what
+  was <i>not</i> assessed.</p>
+
+<div class="tw"><table>
+  <thead><tr><th>Report</th><th>Scan</th><th>Formats</th><th>Operator</th>
+    <th>Paths</th><th>Created</th></tr></thead>
+  <tbody>
+  {% for row in rows %}
+    {% set r = row.report %}
+    <tr><td class="mono">{{ r.id }}</td>
+      <td class="mono"><a href="/scans/{{ r.scan_id }}">{{ r.scan_id }}</a></td>
+      <td>{% for f in r.formats %}<span class="tag">{{ f }}</span> {% endfor %}</td>
+      <td>{{ r.operator or "—" }}</td>
+      <td class="mono">{% for k, v in r.paths.items() %}{{ v }}<br>{% endfor %}</td>
+      <td class="mono">{{ r.created_at.strftime("%Y-%m-%d %H:%M") }}</td></tr>
+  {% else %}
+    <tr><td colspan="6" class="empty">No reports generated. Run
+      <code>velora report generate --scan &lt;id&gt; --format html,json,sarif</code>.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+<p class="lede">Report files are written to disk on the Velora host and are not served
+  by this dashboard. SARIF for a scan is available at
+  <code>/api/scans/&lt;scan-id&gt;/sarif</code>.</p>
+{% endblock %}

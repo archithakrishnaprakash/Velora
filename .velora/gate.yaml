@@ -1,0 +1,27 @@
+# Velora CI/CD security gate policy.
+#
+# This is the policy the example pipelines in .github/workflows/ and examples/ci/
+# reference. Regenerate a fresh copy at any time with:
+#
+#   velora gate init --output .velora/gate.yaml
+#
+# The gate answers one question: did this scan violate a rule you configured?
+# A PASS is not a statement that the application is secure — it means no rule below
+# was violated by what Velora's checks actually observed.
+gate:
+  # Fail the build if any finding at these severities is present.
+  fail_on: [critical, high]
+
+  # Optional numeric thresholds. Omit a key to disable that rule.
+  # max_cvss applies only to findings that carry a real derived CVSS vector;
+  # findings scored "Not Assessed" are never treated as if they scored zero.
+  # max_cvss: 7.0
+  # max_priority_score: 70
+  # max_new_findings: 0        # relative to the scan passed as --baseline
+
+  # Fail if a finding that a previous scan no longer reported comes back.
+  fail_on_regression: true
+
+  # Count only findings a human has validated. Off by default: a gate should stop a
+  # regression before triage, not after it.
+  ignore_unvalidated: false

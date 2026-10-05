@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block content %}
+<h1>Attack surface</h1>
+<p class="lede">What Velora actually observed within scope: hosts, endpoints, parameters,
+  forms and technology fingerprints. Nothing here asserts a vulnerability.</p>
+{{ m.scanpicker(scans, scan_id) }}
+{% if not scan_id %}{{ m.noscan(scans) }}{% else %}
+
+<div class="kpis">
+  {{ m.kpi("Hosts", hosts|length) }}
+  {{ m.kpi("Endpoints", endpoints|length) }}
+  {{ m.kpi("API endpoints", api_endpoints) }}
+  {{ m.kpi("Parameterised", param_endpoints) }}
+  {{ m.kpi("Technologies", technologies|length) }}
+</div>
+
+<div class="charts">
+  <div class="card"><h3>Technology categories</h3>
+    {{ charts.category_bars(tech_counts, label="technology categories")|safe }}
+    <div class="cap">Counted per fingerprint category, not per CVE. Velora never
+      synthesises a CVE from a version string.</div></div>
+  <div class="card"><h3>HTTP methods observed</h3>
+    {{ charts.category_bars(method_counts, label="methods")|safe }}
+    <div class="cap">Methods actually exercised by the crawler within scope.</div></div>
+</div>
+
+<h2>Endpoints ({{ endpoints|length }})</h2>
+<div class="tw"><table>
+  <thead><tr><th>Method</th><th>URL</th><th class="num">Status</th><th>Content type</th>
+    <th class="num">Size</th><th>Parameters</th><th>Forms</th><th>API</th></tr></thead>
+  <tbody>
+  {% for e in endpoints %}
+    <tr><td>{{ e.method }}</td><td class="mono">{{ e.url|shorten(78) }}</td>
+      <td class="num">{{ e.status_code if e.status_code is not none else "—" }}</td>
+      <td>{{ e.content_type|shorten(28) or "—" }}</td>
+      <td class="num">{{ e.response_size }}</td>
+      <td class="mono">{{ e.parameters|join(", ")|shorten(34) or "—" }}</td>
+      <td class="num">{{ e.forms|length }}</td>
+      <td>{{ "yes" if e.is_api else "—" }}</td></tr>
+  {% else %}
+    <tr><td colspan="8" class="empty">No endpoints recorded for this scan.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+
+<h2>Technologies ({{ technologies|length }})</h2>
+<div class="tw"><table>
+  <thead><tr><th>Name</th><th>Version</th><th>Categories</th><th class="num">Confidence</th>
+    <th>Evidence</th></tr></thead>
+  <tbody>
+  {% for t in technologies %}
+    <tr><td>{{ t.name }}</td><td class="mono">{{ t.version or "unknown" }}</td>
+      <td>{{ t.categories|join(", ") or "—" }}</td>
+      <td class="num">{{ "%.2f"|format(t.confidence) }}</td>
+      <td class="mono">{{ t.evidence|shorten(60) or "—" }}</td></tr>
+  {% else %}
+    <tr><td colspan="5" class="empty">No technologies fingerprinted.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+
+<h2>Hosts ({{ hosts|length }})</h2>
+<div class="tw"><table>
+  <thead><tr><th>Hostname</th><th>Addresses</th><th>Ports</th></tr></thead>
+  <tbody>
+  {% for h in hosts %}
+    <tr><td class="mono">{{ h.hostname }}</td>
+      <td class="mono">{{ h.ip_addresses|join(", ") or "—" }}</td>
+      <td class="mono">{{ h.ports|join(", ") or "—" }}</td></tr>
+  {% else %}
+    <tr><td colspan="3" class="empty">No hosts recorded.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endif %}
+{% endblock %}

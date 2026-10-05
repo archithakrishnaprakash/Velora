@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block content %}
+<h1>Settings</h1>
+<p class="lede">The effective configuration for this Velora instance. Secret values are
+  never shown here — the AI section names the <i>environment variable</i> that holds an
+  API key, never the key itself.</p>
+
+<h2>Runtime</h2>
+<dl class="kv">
+  <dt>Version</dt><dd class="mono">{{ version }}</dd>
+  <dt>Config file</dt><dd class="mono">{{ cfg.config_path or "defaults (no file loaded)" }}</dd>
+  <dt>Registered checks</dt><dd class="mono">{{ checks }}</dd>
+  <dt>Database</dt><dd class="mono">{{ cfg.database.url }}</dd>
+  <dt>Report output</dt><dd class="mono">{{ cfg.reports.output_dir }}</dd>
+</dl>
+
+<h2>API / dashboard</h2>
+<dl class="kv">
+  <dt>Bind host</dt><dd class="mono">{{ cfg.api.host }}
+    {% if cfg.api.host in ("127.0.0.1", "localhost", "::1") %}
+      <span class="tag ok">loopback only</span>
+    {% else %}<span class="tag warn">reachable off-host</span>{% endif %}</dd>
+  <dt>Port</dt><dd class="mono">{{ cfg.api.port }}</dd>
+  <dt>CORS origins</dt><dd class="mono">{{ cfg.api.cors_allow_origins|join(", ") or "none" }}</dd>
+  <dt>Dashboard enabled</dt><dd class="mono">{{ cfg.dashboard.enabled }}</dd>
+</dl>
+
+<h2>Scope defaults</h2>
+<dl class="kv">
+  <dt>Allowed schemes</dt><dd class="mono">{{ cfg.scope.allowed_schemes|join(", ") }}</dd>
+  <dt>Allowed ports</dt><dd class="mono">{{ cfg.scope.allowed_ports|join(", ") }}</dd>
+  <dt>Max requests</dt><dd class="mono">{{ cfg.scope.max_requests }}</dd>
+  <dt>Max concurrency</dt><dd class="mono">{{ cfg.scope.max_concurrency }}</dd>
+  <dt>Request delay</dt><dd class="mono">{{ cfg.scope.request_delay }}s</dd>
+  <dt>Timeout</dt><dd class="mono">{{ cfg.scope.timeout }}s</dd>
+  <dt>Redirect policy</dt><dd class="mono">{{ cfg.scope.redirect_policy }}</dd>
+  <dt>Private targets</dt><dd class="mono">{{ cfg.scope.allow_private_targets }}
+    {% if not cfg.scope.allow_private_targets %}<span class="tag ok">RFC1918 and loopback blocked</span>{% endif %}</dd>
+</dl>
+
+<h2>Scanner</h2>
+<dl class="kv">
+  <dt>Default profile</dt><dd class="mono">{{ cfg.scanner.default_profile }}
+    {% if cfg.scanner.default_profile == "safe" %}<span class="tag ok">safe by default</span>{% endif %}</dd>
+  <dt>User agent</dt><dd class="mono">{{ cfg.scanner.user_agent }}</dd>
+  <dt>Verify TLS</dt><dd class="mono">{{ cfg.scanner.verify_tls }}</dd>
+  <dt>Follow redirects</dt><dd class="mono">{{ cfg.scanner.follow_redirects }}</dd>
+  <dt>Max crawl depth</dt><dd class="mono">{{ cfg.scanner.max_crawl_depth }}</dd>
+  <dt>Max crawl pages</dt><dd class="mono">{{ cfg.scanner.max_crawl_pages }}</dd>
+  <dt>Respect robots.txt</dt><dd class="mono">{{ cfg.scanner.respect_robots }}</dd>
+</dl>
+
+<h2>AI</h2>
+<dl class="kv">
+  <dt>Provider</dt><dd class="mono">{{ cfg.ai.provider }}</dd>
+  <dt>Model</dt><dd class="mono">{{ cfg.ai.model }}</dd>
+  <dt>API key source</dt><dd class="mono">${{ cfg.ai.api_key_env }}
+    <span class="tag ok">environment variable name only</span></dd>
+  <dt>AI may confirm findings</dt><dd class="mono">{{ cfg.ai.allow_ai_confirmation }}
+    {% if not cfg.ai.allow_ai_confirmation %}<span class="tag ok">disabled</span>{% endif %}</dd>
+  <dt>Max tokens</dt><dd class="mono">{{ cfg.ai.max_tokens }}</dd>
+  <dt>Temperature</dt><dd class="mono">{{ cfg.ai.temperature }}</dd>
+</dl>
+
+<div class="banner info">This dashboard is read-only. Scans, approvals and finding
+  validation happen through the CLI, where authorization acknowledgement, scope
+  enforcement and audit logging apply.</div>
+{% endblock %}

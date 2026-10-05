@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block content %}
+<h1>Differential analysis</h1>
+<p class="lede">Structured comparison of two responses with volatile fields (timestamps,
+  nonces, session ids) normalised away. A difference is an observation; the
+  interpretation never asserts a vulnerability on its own.</p>
+{{ m.scanpicker(scans, scan_id) }}
+{% if not scan_id %}{{ m.noscan(scans) }}{% else %}
+
+<div class="kpis">
+  {{ m.kpi("Comparisons", diffs|length) }}
+  {{ m.kpi("With differences", changed) }}
+</div>
+
+<div class="charts">
+  <div class="card"><h3>Difference classifications</h3>
+    {{ charts.category_bars(classes, label="classifications")|safe }}
+    <div class="cap">A classification describes what changed, not why.</div></div>
+</div>
+
+<h2>Observations</h2>
+<div class="tw"><table>
+  <thead><tr><th>Label</th><th>Baseline</th><th>Candidate</th><th>Classifications</th>
+    <th class="num">Diffs</th><th class="num">Confidence</th><th>Interpretation</th></tr></thead>
+  <tbody>
+  {% for d in diffs %}
+    <tr><td>{{ d.label or "—" }}</td>
+      <td class="mono">{{ d.baseline_method }} {{ d.baseline_url|shorten(40) }}</td>
+      <td class="mono">{{ d.candidate_method }} {{ d.candidate_url|shorten(40) }}</td>
+      <td>{% for c in d.classifications %}<span class="tag">{{ c }}</span> {% endfor %}
+          {% if not d.classifications %}—{% endif %}</td>
+      <td class="num">{{ d.differences|length }}</td>
+      <td class="num">{{ "%.2f"|format(d.confidence) }}</td>
+      <td>{{ d.interpretation|shorten(90) or "—" }}</td></tr>
+  {% else %}
+    <tr><td colspan="7" class="empty">No differential observations for this scan.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endif %}
+{% endblock %}

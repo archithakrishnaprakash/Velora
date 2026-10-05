@@ -1,0 +1,22 @@
+services:
+  velora:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: velora:2.0.0
+    container_name: velora
+    # Bind only to loopback on the host by default — do not expose publicly.
+    ports:
+      - "127.0.0.1:8787:8787"
+    environment:
+      # Provide an AI key here only if you use an external LLM provider.
+      - VELORA_AI__PROVIDER=heuristic
+      # - VELORA_AI_API_KEY=${VELORA_AI_API_KEY}
+    volumes:
+      - velora_data:/data
+      - velora_config:/config
+    restart: unless-stopped
+
+volumes:
+  velora_data:
+  velora_config:

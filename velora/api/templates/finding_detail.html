@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block content %}
+<p><a href="/findings?scan={{ finding.scan_id }}">← Findings</a></p>
+<h1>{{ finding.title }}</h1>
+<p class="lede">
+  <span class="pill {{ finding.severity.value|sevclass }}">{{ finding.severity.value }}</span>
+  <span class="tag">{{ finding.status.value }}</span>
+  <span class="tag">{{ finding.validation_state.value }}</span>
+  <span class="tag">confidence: {{ finding.confidence.value }}</span>
+  <span class="tag">{{ finding.remediation_status.value }}</span>
+</p>
+
+{% if finding.status.value != "Confirmed" %}
+<div class="banner warn">This finding has not been confirmed by a human reviewer.
+  Treat it as an observation requiring validation.</div>
+{% endif %}
+
+<h2>What was observed</h2>
+<dl class="kv">
+  <dt>Finding ID</dt><dd class="mono">{{ finding.id }}</dd>
+  <dt>Scan</dt><dd class="mono"><a href="/scans/{{ finding.scan_id }}">{{ finding.scan_id }}</a></dd>
+  <dt>Endpoint</dt><dd class="mono">{{ finding.method }} {{ finding.endpoint }}</dd>
+  <dt>Detector</dt><dd class="mono">{{ finding.scanner or "—" }}</dd>
+  <dt>Category</dt><dd>{{ finding.category }}</dd>
+  <dt>Description</dt><dd>{{ finding.description or "—" }}</dd>
+</dl>
+
+<h2>Why it matters</h2>
+<dl class="kv">
+  <dt>Impact</dt><dd>{{ finding.impact or "Not assessed." }}</dd>
+  <dt>CWE</dt><dd class="mono">{{ finding.cwe_id }}</dd>
+  <dt>OWASP</dt><dd class="mono">{{ finding.owasp_category }}</dd>
+  <dt>CVSS</dt><dd class="mono">
+    {% if finding.cvss_base_score is not none %}
+      {{ "%.1f"|format(finding.cvss_base_score) }} ({{ finding.cvss_severity }})
+      · {{ finding.cvss_vector }} · v{{ finding.cvss_version }}
+    {% else %}Not Assessed{% endif %}</dd>
+  <dt>Priority score</dt><dd class="mono">{{ "%.1f"|format(finding.priority_score or 0) }}
+    <span class="sub">Velora priority — not CVSS</span></dd>
+</dl>
+
+<h2>Evidence ({{ evidence|length }})</h2>
+<div class="tw"><table>
+  <thead><tr><th>Test</th><th class="num">Status</th><th>Content type</th>
+    <th class="num">Size</th><th class="num">Confidence</th><th>Sanitised excerpt</th></tr></thead>
+  <tbody>
+  {% for e in evidence %}
+    <tr><td class="mono">{{ e.test_name or "—" }}</td>
+      <td class="num">{{ e.status_code if e.status_code is not none else "—" }}</td>
+      <td>{{ e.content_type|shorten(26) or "—" }}</td>
+      <td class="num">{{ e.response_size }}</td>
+      <td class="num">{{ "%.2f"|format(e.confidence) }}</td>
+      <td class="mono">{{ e.sanitized_excerpt|shorten(110) or "—" }}</td></tr>
+  {% else %}
+    <tr><td colspan="6" class="empty">No evidence rows attached to this finding.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+<p class="lede">Excerpts are redacted before storage; secrets, tokens and credentials
+  are never written to the database or to reports.</p>
+
+<h2>AI analysis</h2>
+{% for a in analyses %}
+  <div class="card" style="margin-bottom:10px">
+    <h3>{{ a.classification or "analysis" }}
+      <span class="tag">{{ a.validation_status.value }}</span>
+      <span class="tag">{{ a.provider }}/{{ a.model }}</span>
+      <span class="tag">confidence {{ "%.2f"|format(a.confidence) }}</span></h3>
+    <dl class="kv">
+      <dt>Reasoning summary</dt><dd>{{ a.reasoning_summary or "—" }}</dd>
+      <dt>Supporting evidence</dt><dd class="mono">{{ a.supporting_evidence|join(", ") or "none" }}</dd>
+      <dt>Contradicting evidence</dt><dd class="mono">{{ a.contradicting_evidence|join(", ") or "none" }}</dd>
+      <dt>Missing evidence</dt><dd class="mono">{{ a.missing_evidence|join(", ") or "none" }}</dd>
+      <dt>Recommended validation</dt><dd>{{ a.recommended_validation or "—" }}</dd>
+    </dl>
+    <div class="cap">AI output is an interpretation of stored evidence. It can never
+      confirm a finding, and confidence is capped by the evidence matrix.</div>
+  </div>
+{% else %}
+  <div class="banner info">No AI analysis recorded for this finding.</div>
+{% endfor %}
+
+<h2>Remediation and retest</h2>
+{% if remediation %}
+<dl class="kv">
+  <dt>Status</dt><dd><span class="tag">{{ remediation.status.value }}</span></dd>
+  <dt>Owner</dt><dd>{{ remediation.owner or "—" }}</dd>
+  <dt>Note</dt><dd>{{ remediation.note or "—" }}</dd>
+  <dt>Verified at</dt><dd class="mono">{{ remediation.verified_at or "not verified" }}</dd>
+</dl>
+{% else %}
+<div class="banner info">No remediation action opened for this finding.</div>
+{% endif %}
+
+<div class="tw"><table>
+  <thead><tr><th>Retest</th><th>Original scan</th><th>Retest scan</th><th>Still present</th>
+    <th>Verdict</th><th>Detail</th></tr></thead>
+  <tbody>
+  {% for t in retests %}
+    <tr><td class="mono">{{ t.id }}</td><td class="mono">{{ t.original_scan_id }}</td>
+      <td class="mono">{{ t.retest_scan_id or "—" }}</td>
+      <td>{% if t.still_present is none %}unknown{% elif t.still_present %}yes{% else %}no{% endif %}</td>
+      <td><span class="tag">{{ t.verdict.value }}</span></td>
+      <td>{{ t.detail|shorten(80) }}</td></tr>
+  {% else %}
+    <tr><td colspan="6" class="empty">No retests recorded.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+
+<h2>Reproduction package</h2>
+{% if reproduction %}
+<dl class="kv">
+  <dt>Velora version</dt><dd class="mono">{{ reproduction.velora_version }}</dd>
+  <dt>Scan profile</dt><dd class="mono">{{ reproduction.scan_profile }}</dd>
+  <dt>Scope hash</dt><dd class="mono">{{ reproduction.scope_policy_hash }}</dd>
+  <dt>Scope summary</dt><dd class="mono">{{ reproduction.scope_summary }}</dd>
+</dl>
+<h3>Steps</h3>
+<pre>{% for s in reproduction.steps %}{{ loop.index }}. {{ s }}
+{% endfor %}</pre>
+<div class="cap">The reproduction package contains no credentials or secret material.</div>
+{% else %}
+<div class="banner info">No reproduction package built. Run
+  <code>velora reproduce show {{ finding.id }}</code>.</div>
+{% endif %}
+
+<h2>Knowledge graph links</h2>
+<div class="tw"><table>
+  <thead><tr><th>Relation</th><th>Target</th><th>Kind</th><th>State</th>
+    <th class="num">Confidence</th></tr></thead>
+  <tbody>
+  {% for k in knowledge %}
+    <tr><td>{{ k.relation }}</td><td class="mono">{{ k.target_id }}</td>
+      <td>{{ k.target_kind }}</td><td>{{ k.validation_status.value }}</td>
+      <td class="num">{{ "%.2f"|format(k.confidence) }}</td></tr>
+  {% else %}
+    <tr><td colspan="5" class="empty">No knowledge-graph relationships recorded.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+
+<h2>Recommended remediation</h2>
+<p>{{ finding.remediation or "No remediation guidance recorded for this detector." }}</p>
+{% if finding.references %}
+<h3>References</h3>
+<ul>{% for r in finding.references %}<li class="mono">{{ r }}</li>{% endfor %}</ul>
+{% endif %}
+{% endblock %}

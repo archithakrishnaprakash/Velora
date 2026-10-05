@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Velora Report — {{ scan.id }}</title>
+<style>
+  :root{
+    --bg:#0f1419;--panel:#171d26;--panel2:#1e2530;--ink:#e6edf3;--muted:#93a1b1;
+    --line:#2a3340;--accent:#4da3ff;
+    --critical:#ff4d4f;--high:#ff7a45;--medium:#ffc53d;--low:#40a9ff;--info:#8c9bab;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:960px;margin:0 auto;padding:32px 20px}
+  h1,h2,h3{line-height:1.2}
+  h1{font-size:30px;margin:0 0 4px}
+  h2{font-size:20px;margin:34px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+  h3{font-size:15px;margin:0 0 6px}
+  a{color:var(--accent)}
+  .sub{color:var(--muted)}
+  .cover{background:linear-gradient(135deg,#12203a,#0f1419);border:1px solid var(--line);
+    border-radius:14px;padding:34px;margin-bottom:8px}
+  .cover .badge{display:inline-block;padding:3px 10px;border:1px solid var(--accent);
+    border-radius:999px;color:var(--accent);font-size:12px;letter-spacing:.5px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+  .kpi{font-size:26px;font-weight:700}
+  .kpi.small{font-size:20px}
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;color:#0b0f14}
+  .sev-critical{background:var(--critical)} .sev-high{background:var(--high)}
+  .sev-medium{background:var(--medium)} .sev-low{background:var(--low);color:#fff}
+  .sev-info{background:var(--info)}
+  .finding{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--line);
+    border-radius:10px;padding:16px;margin:12px 0}
+  .finding.sev-critical{border-left-color:var(--critical)}
+  .finding.sev-high{border-left-color:var(--high)}
+  .finding.sev-medium{border-left-color:var(--medium)}
+  .finding.sev-low{border-left-color:var(--low)}
+  .finding.sev-info{border-left-color:var(--info)}
+  .finding .hd{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+  .meta{color:var(--muted);font-size:12px;margin:4px 0 10px}
+  .evidence{background:#0b0f14;border:1px solid var(--line);border-radius:8px;padding:10px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;white-space:pre-wrap;
+    word-break:break-word;color:#c8d3de}
+  .hyp{background:#241c12;border:1px solid #6b4e1f;border-radius:10px;padding:12px;margin:10px 0}
+  .hyp .tag{color:#ffc53d;font-weight:700;font-size:11px;letter-spacing:.6px}
+  .note{background:#14212e;border:1px solid #244055;border-radius:8px;padding:10px 12px;color:#bcd3e6}
+  ul{margin:6px 0 6px 18px;padding:0}
+  code{background:#0b0f14;border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:12px}
+  footer{margin-top:40px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:14px}
+  .sec{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:12px 14px;margin:10px 0}
+  .sec h4{margin:0 0 4px;font-size:12px;letter-spacing:.7px;text-transform:uppercase;
+    color:var(--muted);font-weight:700}
+  .sec p{margin:0 0 8px}
+  .sec ul{margin:2px 0 8px 18px}
+  .unknown{background:#231a12;border:1px solid #5d4a24;border-radius:8px;padding:10px 12px;
+    margin:8px 0;color:#f0d5a8}
+  .unknown h4{color:#d8a94a}
+  .tagrow{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+  .tg{display:inline-block;padding:1px 8px;border:1px solid var(--line);border-radius:999px;
+    font-size:11px;color:var(--muted)}
+  .tg.ok{border-color:#1f5c1f;color:#5fce5f}
+  .tg.bad{border-color:#6e2626;color:#ef7676}
+  .tg.warn{border-color:#6b4e1f;color:#ffc53d}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 1. COVER -->
+  <div class="cover">
+    <span class="badge">AUTHORIZED SECURITY ASSESSMENT</span>
+    <h1>Web Application Security Assessment Report</h1>
+    <div class="sub">{{ target.name or target.url }} &nbsp;·&nbsp; Scan <code>{{ scan.id }}</code>
+      {% if engagement %}&nbsp;·&nbsp; Engagement {{ engagement.name }}{% endif %}</div>
+    <div class="grid">
+      <div class="card"><div class="sub">Target</div><div class="kpi small">{{ target.url }}</div></div>
+      <div class="card"><div class="sub">Authorization</div><div class="kpi small">{{ target.authorization_status }}</div></div>
+      <div class="card"><div class="sub">Profile</div><div class="kpi small">{{ scan.profile }}</div></div>
+      <div class="card"><div class="sub">Operator</div><div class="kpi small">{{ meta.operator or "—" }}</div></div>
+    </div>
+    <div class="sub">Generated {{ meta.generated_at }} · {{ meta.tool }} v{{ meta.tool_version }} · {{ meta.company_name }}</div>
+  </div>
+
+  <!-- 2. EXECUTIVE SUMMARY -->
+  <h2>Executive Summary</h2>
+  <div class="grid">
+    <div class="card"><div class="sub">Total findings</div><div class="kpi">{{ summary.total_findings }}</div></div>
+    <div class="card"><div class="sub">Critical</div><div class="kpi" style="color:var(--critical)">{{ summary.by_severity.Critical }}</div></div>
+    <div class="card"><div class="sub">High</div><div class="kpi" style="color:var(--high)">{{ summary.by_severity.High }}</div></div>
+    <div class="card"><div class="sub">Medium</div><div class="kpi" style="color:var(--medium)">{{ summary.by_severity.Medium }}</div></div>
+    <div class="card"><div class="sub">Low</div><div class="kpi" style="color:var(--low)">{{ summary.by_severity.Low }}</div></div>
+    <div class="card"><div class="sub">Endpoints</div><div class="kpi">{{ attack_surface.endpoints|length }}</div></div>
+    {% if posture %}<div class="card"><div class="sub">Posture score</div>
+      <div class="kpi">{{ "%.1f"|format(posture[0].overall) }}</div></div>{% endif %}
+  </div>
+  <div class="note">All findings below are evidence-backed observations produced by
+    deterministic checks. They are prioritised by the <b>Velora Priority Score</b> (0–100),
+    a triage metric distinct from CVSS. A finding is <b>Potential</b> until a human
+    reviewer confirms it. The absence of a finding is not evidence that the target is
+    secure.</div>
+
+  <!-- 3. SCOPE & AUTHORIZATION -->
+  <h2>Scope &amp; Authorization</h2>
+  {% if engagement %}
+  <table>
+    <tr><th>Engagement</th><td>{{ engagement.name }} ({{ engagement.status }})</td></tr>
+    <tr><th>Client</th><td>{{ engagement.client or "—" }}</td></tr>
+    <tr><th>Authorization reference</th><td><code>{{ engagement.authorization_reference or "—" }}</code></td></tr>
+    <tr><th>Granted by</th><td>{{ engagement.authorization_granted_by or "—" }}</td></tr>
+    <tr><th>Window</th><td>{{ engagement.starts_at or "—" }} → {{ engagement.ends_at or "—" }}</td></tr>
+  </table>
+  {% endif %}
+  <table>
+    <tr><th>Target URL</th><td>{{ target.url }}</td></tr>
+    <tr><th>Authorization status</th><td>{{ authorization.target_authorization_status }}</td></tr>
+    <tr><th>Operator acknowledgement</th><td>{{ authorization.statement }}</td></tr>
+    <tr><th>Scan profile</th><td>{{ scan.profile }}</td></tr>
+    <tr><th>Requests sent</th><td>{{ scan.stats.requests or 0 }} (blocked out-of-scope: {{ scan.stats.blocked_requests or 0 }})</td></tr>
+    <tr><th>Started / finished</th><td>{{ scan.started_at }} → {{ scan.finished_at }}</td></tr>
+  </table>
+  <h3>Scope policy in force</h3>
+  <table>
+    <tr><th>Allowed domains</th><td>{{ scope.allowed_domains|join(", ") or "—" }}</td></tr>
+    <tr><th>Allowed IPs</th><td>{{ scope.allowed_ips|join(", ") or "—" }}</td></tr>
+    <tr><th>Allowed ports</th><td>{{ scope.allowed_ports|join(", ") or "—" }}</td></tr>
+    <tr><th>Allowed schemes</th><td>{{ scope.allowed_schemes|join(", ") or "—" }}</td></tr>
+    <tr><th>Excluded paths</th><td>{{ scope.excluded_paths|join(", ") or "—" }}</td></tr>
+    <tr><th>Request budget</th><td>{{ scope.max_requests or "—" }}</td></tr>
+    <tr><th>Redirect policy</th><td>{{ scope.redirect_policy or "—" }}</td></tr>
+    <tr><th>Private targets</th><td>{{ scope.allow_private_targets }}</td></tr>
+  </table>
+  <div class="note">{{ scope.note }}</div>
+
+  <!-- 4. METHODOLOGY -->
+  <h2>Methodology</h2>
+  <ul>{% for m in methodology %}<li>{{ m }}</li>{% endfor %}</ul>
+
+  <!-- 5/6. ATTACK SURFACE -->
+  <h2>Attack Surface</h2>
+  <h3>Technologies</h3>
+  {% if attack_surface.technologies %}
+  <table><tr><th>Technology</th><th>Version</th><th>Confidence</th><th>Evidence</th></tr>
+    {% for t in attack_surface.technologies %}
+    <tr><td>{{ t.name }}</td><td>{{ t.version or "—" }}</td><td>{{ "%.2f"|format(t.confidence) }}</td><td>{{ t.evidence }}</td></tr>
+    {% endfor %}
+  </table>
+  <div class="sub">Version detection is best-effort. Velora does not derive a CVE from a
+    version string.</div>
+  {% else %}<div class="sub">No technologies confidently fingerprinted.</div>{% endif %}
+  <h3>Endpoints ({{ attack_surface.endpoints|length }})</h3>
+  <table><tr><th>Method</th><th>URL</th><th>Status</th><th>API</th><th>Params</th></tr>
+    {% for e in attack_surface.endpoints %}
+    <tr><td>{{ e.method }}</td><td>{{ e.url }}</td><td>{{ e.status }}</td>
+        <td>{{ "yes" if e.is_api else "" }}</td><td>{{ e.params|join(", ") }}</td></tr>
+    {% endfor %}
+  </table>
+
+  <!-- 7. FINDINGS SUMMARY -->
+  <h2>Findings Summary</h2>
+  <table><tr><th>Priority</th><th>Severity</th><th>Finding</th><th>Category</th><th>CWE</th>
+    <th>OWASP</th><th>Status</th><th>Retest</th></tr>
+    {% for f in findings %}
+    <tr>
+      <td><b>{{ "%.1f"|format(f.priority_score or 0) }}</b></td>
+      <td><span class="pill {{ f.severity|sevclass }}">{{ f.severity }}</span></td>
+      <td>{{ f.title }} <span class="sub">({{ f.id }})</span></td>
+      <td>{{ f.category }}</td><td><code>{{ f.cwe_id }}</code></td>
+      <td><code>{{ f.owasp_category }}</code></td><td>{{ f.status }}</td>
+      <td>{{ f.explanation.retest_status.status }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <!-- 8/9/10. EXPLAINABLE FINDINGS -->
+  <h2>Findings Detail</h2>
+  {% for f in findings %}
+  <div class="finding {{ f.severity|sevclass }}">
+    <div class="hd">
+      <div><h3>{{ f.title }}</h3>
+        <div class="meta">{{ f.id }} · {{ f.method }} {{ f.endpoint }} · detector: <code>{{ f.scanner }}</code></div>
+      </div>
+      <div style="text-align:right">
+        <span class="pill {{ f.severity|sevclass }}">{{ f.severity }}</span><br>
+        <span class="sub">Priority {{ "%.1f"|format(f.priority_score or 0) }} · {{ f.status }}</span>
+      </div>
+    </div>
+    <div class="tagrow">
+      <span class="tg">{{ f.validation_state }}</span>
+      <span class="tg">CWE {{ f.cwe_id }}</span>
+      <span class="tg">OWASP {{ f.owasp_category }}</span>
+      <span class="tg {{ 'ok' if f.status == 'Confirmed' else 'warn' }}">{{ f.status }}</span>
+    </div>
+
+    <div class="sec"><h4>What was observed</h4><p>{{ f.explanation.what_was_observed }}</p></div>
+    <div class="sec"><h4>Why it matters</h4><p>{{ f.explanation.why_it_matters }}</p></div>
+
+    <div class="sec"><h4>Evidence</h4>
+      {% if f.explanation.evidence %}
+        {% for ev in f.explanation.evidence %}
+        <div class="evidence">[{{ ev.test_name }}] status={{ ev.status_code }} conf={{ "%.2f"|format(ev.confidence) }}
+{{ ev.excerpt }}</div>
+        {% endfor %}
+        <div class="sub">Excerpts are redacted before storage; credentials, tokens and
+          cookie values are never written to the database or to this report.</div>
+      {% else %}<div class="sub">No evidence records are attached to this finding.</div>{% endif %}
+    </div>
+
+    <div class="sec"><h4>Confidence</h4>
+      <table>
+        <tr><th>Detector confidence</th><td>{{ f.explanation.confidence.detector_confidence }}</td></tr>
+        <tr><th>Velora priority</th><td>{{ "%.1f"|format(f.explanation.confidence.velora_priority_score or 0) }}
+          <span class="sub">{{ f.explanation.confidence.priority_note }}</span></td></tr>
+        <tr><th>CVSS</th><td>{% if f.cvss == "Not Assessed" %}Not Assessed{% else %}
+          v{{ f.cvss.version }} {{ f.cvss.base_score }} <span class="sub">{{ f.cvss.vector }}</span>{% endif %}</td></tr>
+        {% if f.explanation.confidence.ai_confidence is not none %}
+        <tr><th>AI confidence</th><td>{{ "%.2f"|format(f.explanation.confidence.ai_confidence) }}
+          ({{ f.explanation.confidence.ai_validation_status }}) <span class="sub">— AI output is an
+          interpretation of the evidence above, capped by the evidence matrix, and never a
+          confirmation.</span></td></tr>
+        {% endif %}
+      </table>
+    </div>
+
+    <div class="unknown"><h4>What is unknown</h4>
+      <ul>{% for u in f.explanation.what_is_unknown %}<li>{{ u }}</li>{% else %}
+        <li>No outstanding gaps were recorded for this finding.</li>{% endfor %}</ul>
+    </div>
+
+    <div class="sec"><h4>Validation required</h4><p>{{ f.explanation.validation_required }}</p></div>
+    <div class="sec"><h4>Recommended remediation</h4><p>{{ f.explanation.recommended_remediation }}</p></div>
+
+    <div class="sec"><h4>Retest status</h4>
+      <p><b>{{ f.explanation.retest_status.status }}</b> — {{ f.explanation.retest_status.detail }}</p>
+      {% if f.explanation.retest_status.retests %}
+      <table><tr><th>Retest</th><th>Verdict</th><th>Still present</th><th>Retest scan</th></tr>
+        {% for r in f.explanation.retest_status.retests %}
+        <tr><td><code>{{ r.id }}</code></td><td>{{ r.verdict }}</td>
+          <td>{% if r.still_present is none %}unknown{% elif r.still_present %}yes{% else %}no{% endif %}</td>
+          <td><code>{{ r.retest_scan_id or "—" }}</code></td></tr>
+        {% endfor %}
+      </table>
+      {% endif %}
+    </div>
+
+    {% if f.reproduction %}
+    <div class="sec"><h4>Reproduction</h4>
+      <div class="sub">Velora {{ f.reproduction.velora_version }} · profile
+        {{ f.reproduction.scan_profile }} · scope hash <code>{{ f.reproduction.scope_policy_hash }}</code></div>
+      <ul>{% for step in f.reproduction.steps %}<li><code>{{ step }}</code></li>{% endfor %}</ul>
+      <div class="sub">{{ f.reproduction.note }}</div>
+    </div>
+    {% endif %}
+
+    {% if f.knowledge_links %}
+    <div class="sec"><h4>Knowledge graph</h4>
+      <table><tr><th>Relation</th><th>Target</th><th>Kind</th><th>State</th><th>Confidence</th></tr>
+        {% for k in f.knowledge_links %}
+        <tr><td>{{ k.relation }}</td><td><code>{{ k.target_id }}</code></td><td>{{ k.target_kind }}</td>
+          <td>{{ k.validation_status }}</td><td>{{ "%.2f"|format(k.confidence) }}</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% endif %}
+
+    {% if f.validated_by %}<div class="meta">Validated by {{ f.validated_by }}: {{ f.validation_note }}</div>{% endif %}
+    {% if f.references %}<div class="sub">References: {% for r in f.references %}<a href="{{ r }}">{{ r }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</div>{% endif %}
+  </div>
+  {% endfor %}
+
+  <!-- 11. AUTHORIZATION TESTING -->
+  <h2>Authorization Testing</h2>
+  {% if authorization_tests %}
+  <table><tr><th>Identity</th><th>Role</th><th>Method</th><th>Resource</th><th>Expected</th>
+    <th>Observed</th><th>Outcome</th><th>Status</th></tr>
+    {% for t in authorization_tests %}
+    <tr><td><code>{{ t.identity_id or "anonymous" }}</code></td><td>{{ t.role }}</td>
+      <td>{{ t.method }}</td><td>{{ t.url }}</td><td>{{ t.expected }}</td>
+      <td>{{ t.observed }}</td>
+      <td><span class="tg {{ 'bad' if t.is_weakness else ('ok' if t.outcome == 'AS_EXPECTED' else 'warn') }}">{{ t.outcome }}</span></td>
+      <td>{{ t.status_code }}</td></tr>
+    {% endfor %}
+  </table>
+  {% if identities %}
+  <h3>Test identities</h3>
+  <table><tr><th>Name</th><th>Role</th><th>Scheme</th><th>Secret reference</th></tr>
+    {% for i in identities %}
+    <tr><td>{{ i.name }}</td><td>{{ i.role }}</td><td>{{ i.auth_scheme }}</td>
+      <td><code>{{ i.secret_reference }}</code></td></tr>
+    {% endfor %}
+  </table>
+  <div class="sub">Only the environment-variable name is stored. Credential values are never
+    persisted, logged or reported.</div>
+  {% endif %}
+  {% else %}<div class="sub">No authorization tests were run for this scan.</div>{% endif %}
+
+  <!-- 12. DIFFERENTIAL ANALYSIS -->
+  <h2>Differential Analysis</h2>
+  {% if differential_observations %}
+  <table><tr><th>Label</th><th>Baseline</th><th>Candidate</th><th>Classifications</th>
+    <th>Confidence</th><th>Interpretation</th></tr>
+    {% for d in differential_observations %}
+    <tr><td>{{ d.label or "—" }}</td><td>{{ d.baseline }}</td><td>{{ d.candidate }}</td>
+      <td>{{ d.classifications|join(", ") or "—" }}</td>
+      <td>{{ "%.2f"|format(d.confidence) }}</td><td>{{ d.interpretation }}</td></tr>
+    {% endfor %}
+  </table>
+  <div class="sub">A difference is an observation. It is not by itself a vulnerability.</div>
+  {% else %}<div class="sub">No differential observations were recorded for this scan.</div>{% endif %}
+
+  <!-- 13. AI ANALYSIS -->
+  <h2>AI Analysis</h2>
+  <div class="note">{{ ai_analysis.note }}</div>
+  {% if ai_analysis.analyses %}
+  {% for a in ai_analysis.analyses %}
+  <div class="sec">
+    <h4>{{ a.classification or "analysis" }} — {{ a.validation_status }}
+      (confidence {{ "%.2f"|format(a.confidence) }})</h4>
+    <div class="sub">{{ a.provider }}/{{ a.model }}{% if a.finding_id %} · finding <code>{{ a.finding_id }}</code>{% endif %}
+      · prompt sanitised: {{ a.prompt_sanitized }}</div>
+    <p>{{ a.reasoning_summary }}</p>
+    <table>
+      <tr><th>Supporting evidence</th><td>{{ a.supporting_evidence|join(", ") or "none" }}</td></tr>
+      <tr><th>Contradicting evidence</th><td>{{ a.contradicting_evidence|join(", ") or "none" }}</td></tr>
+      <tr><th>Missing evidence</th><td>{{ a.missing_evidence|join(", ") or "none" }}</td></tr>
+      <tr><th>Recommended validation</th><td>{{ a.recommended_validation or "—" }}</td></tr>
+    </table>
+  </div>
+  {% endfor %}
+  {% else %}<div class="sub">No AI analysis was recorded for this scan.</div>{% endif %}
+
+  <!-- 14. ATTACK PATHS -->
+  <h2>Attack Paths</h2>
+  <div class="note">{{ attack_paths.note }}</div>
+  {% if attack_paths.paths %}
+    {% for p in attack_paths.paths %}
+    <div class="{{ 'hyp' if p.is_hypothesis else 'sec' }}">
+      {% if p.is_hypothesis %}<div class="tag">{{ p.validation_status }} — REQUIRES MANUAL VALIDATION</div>{% endif %}
+      <h4>{{ p.validation_status }} · confidence {{ "%.2f"|format(p.confidence) }}</h4>
+      <p>{{ p.explanation }}</p>
+    </div>
+    {% endfor %}
+  {% else %}<div class="sub">No paths were derived from the attack graph for this scan.</div>{% endif %}
+
+  {% if attack_path_hypotheses %}
+  <h3>Correlated finding clusters</h3>
+    {% for h in attack_path_hypotheses %}
+    <div class="hyp">
+      <div class="tag">HYPOTHESIS — REQUIRES MANUAL VALIDATION</div>
+      <h3>{{ h.title }}</h3>
+      <p>{{ h.description }}</p>
+      <div class="sub">Path: {{ h.path|join(" → ") }}</div>
+      <div class="sub">Involves findings: {{ h.finding_ids|join(", ") }}</div>
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- 15. RISK -->
+  <h2>Risk Assessment</h2>
+  <div class="note">Priority scores use the Velora Priority Score model (severity anchored,
+    modulated by confidence, exposure, evidence quality, asset importance, and an
+    unauthenticated-reachability multiplier). It is a triage aid and is <b>not</b> a CVSS
+    score. Where a CVSS vector could be derived from the evidence it is shown per finding;
+    where it could not, the report says <b>Not Assessed</b> rather than supplying a value.</div>
+
+  <!-- 16. SECURITY POSTURE -->
+  {% if posture %}
+  <h2>Security Posture</h2>
+  {% for p in posture %}
+  <div class="sec">
+    <h4>Velora Security Posture Score {{ "%.1f"|format(p.overall) }} / 100
+      (methodology v{{ p.methodology_version }})</h4>
+    <p>{{ p.explanation }}</p>
+    <table><tr><th>Category</th><th>Score</th></tr>
+      {% for k, v in p.categories.items() %}
+      <tr><td>{{ k }}</td><td>{% if v is none %}not assessed{% else %}{{ "%.1f"|format(v) }}{% endif %}</td></tr>
+      {% endfor %}
+    </table>
+    <div class="sub">{{ p.note }}</div>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  <!-- 17. REGRESSION -->
+  <h2>Regression</h2>
+  {% if regression.changes %}
+  <table><tr><th>Change</th><th>Subject</th><th>Severity</th><th>Baseline scan</th></tr>
+    {% for r in regression.changes %}
+    <tr><td>{{ r.change }}</td><td><code>{{ r.subject }}</code></td><td>{{ r.severity or "—" }}</td>
+      <td><code>{{ r.previous_scan_id or "—" }}</code></td></tr>
+    {% endfor %}
+  </table>
+  {% else %}<div class="sub">No baseline comparison was recorded for this scan.</div>{% endif %}
+
+  <!-- 18. BENCHMARK -->
+  {% if benchmark %}
+  <h2>Benchmark Results</h2>
+  {% for b in benchmark %}
+  <table>
+    <tr><th>Suite</th><td>{{ b.suite }} ({{ b.total_cases }} ground-truth cases)</td></tr>
+    <tr><th>Precision / Recall / F1</th><td>{{ "%.2f"|format(b.precision) }} /
+      {{ "%.2f"|format(b.recall) }} / {{ "%.2f"|format(b.f1) }}</td></tr>
+    <tr><th>FPR / FNR</th><td>{{ "%.2f"|format(b.false_positive_rate) }} /
+      {{ "%.2f"|format(b.false_negative_rate) }}</td></tr>
+    <tr><th>Detection coverage</th><td>{{ "%.0f"|format(b.detection_coverage * 100) }}%</td></tr>
+    <tr><th>Evidence completeness</th><td>{{ "%.0f"|format(b.evidence_completeness * 100) }}%</td></tr>
+  </table>
+  <div class="sub">{{ b.note }}</div>
+  {% endfor %}
+  {% endif %}
+
+  <!-- 19. CI/CD GATE -->
+  {% if security_gate %}
+  <h2>CI/CD Security Gate</h2>
+  <table><tr><th>Decision</th><th>Exit code</th><th>Violations</th><th>Summary</th></tr>
+    {% for g in security_gate %}
+    <tr><td><span class="tg {{ 'ok' if g.decision == 'PASS' else ('bad' if g.decision == 'FAIL' else 'warn') }}">{{ g.decision }}</span></td>
+      <td>{{ g.exit_code }}</td><td>{{ g.violations|length }}</td><td>{{ g.summary }}</td></tr>
+    {% endfor %}
+  </table>
+  <div class="sub">A PASS means no configured policy rule was violated. It is not a
+    statement that the application is secure.</div>
+  {% endif %}
+
+  <!-- 20. LIMITATIONS -->
+  <h2>Limitations</h2>
+  <ul>{% for l in limitations %}<li>{{ l }}</li>{% endfor %}</ul>
+
+  <!-- 21. APPENDIX -->
+  <h2>Appendix — Scan Events</h2>
+  <table><tr><th>Time</th><th>Level</th><th>Event</th><th>Message</th></tr>
+    {% for e in events %}<tr><td class="sub">{{ e.at }}</td><td>{{ e.level }}</td><td>{{ e.event }}</td><td>{{ e.message }}</td></tr>{% endfor %}
+  </table>
+
+  <footer>
+    Generated by {{ meta.tool }} v{{ meta.tool_version }} for authorized security assessment only.
+    This report contains evidence-backed observations; AI-assisted content is advisory and
+    requires human validation. No credentials or secret material are included.
+  </footer>
+</div>
+</body>
+</html>

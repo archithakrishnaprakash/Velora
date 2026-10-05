@@ -1,0 +1,51 @@
+{% macro kpi(label, value, tone="") %}
+<div class="card"><div class="sub">{{ label }}</div>
+  {% if value is none %}<div class="kpi na">not assessed</div>
+  {% else %}<div class="kpi" {% if tone %}style="color:{{ tone }}"{% endif %}>{{ value }}</div>
+  {% endif %}</div>
+{% endmacro %}
+
+{% macro legend_for(counts) %}
+{% set items = charts.legend(counts) %}
+{% if items %}
+<div class="legend">
+  {% for label, value, colour in items %}
+    <span><i style="background:{{ colour }}"></i>{{ label }} <b>{{ value }}</b></span>
+  {% endfor %}
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro counts_table(counts, head="Value", unit="Count") %}
+<div class="tw"><table>
+  <thead><tr><th>{{ head }}</th><th class="num">{{ unit }}</th></tr></thead>
+  <tbody>
+  {% for k, v in counts.items()|sort(attribute='1', reverse=true) %}
+    <tr><td>{{ k }}</td><td class="num">{{ v }}</td></tr>
+  {% else %}
+    <tr><td colspan="2" class="empty">Nothing recorded.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endmacro %}
+
+{% macro scanpicker(scans, scan_id, extra_qs="") %}
+<form class="filters" method="get" action="">
+  <label for="scan">Scan</label>
+  <select name="scan" id="scan">
+    {% for s in scans %}
+      <option value="{{ s.id }}" {{ 'selected' if s.id == scan_id else '' }}>
+        {{ s.id }} · {{ s.profile.value }} · {{ s.status.value }}</option>
+    {% else %}
+      <option value="">no scans recorded</option>
+    {% endfor %}
+  </select>
+  <button type="submit">Apply</button>
+</form>
+{% endmacro %}
+
+{% macro noscan(scans) %}
+<div class="banner info">No scan selected.
+  {% if not scans %}Run <code>velora scan --target &lt;name&gt;</code> to produce data.
+  {% else %}Choose a scan above.{% endif %}</div>
+{% endmacro %}

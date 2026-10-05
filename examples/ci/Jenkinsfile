@@ -1,0 +1,111 @@
+// Velora security gate for Jenkins (declarative pipeline).
+//
+// SCOPE AND AUTHORIZATION
+//   The default target is an application this pipeline starts on loopback on the
+//   agent. Pointing VELORA_TARGET at anything else asserts that you hold written
+//   authorization to test that host. Velora enforces scope on every request; it
+//   cannot know whether you are permitted to test a given system.
+//
+// EXIT CODES
+//   velora gate evaluate exits 0 PASS, 1 FAIL (policy violated),
+//   2 ERROR (missing or incomplete scan, or an invalid policy).
+//   FAIL marks the build FAILURE; ERROR does too — it never passes silently.
+
+pipeline {
+  agent any
+
+  options {
+    timeout(time: 20, unit: 'MINUTES')
+    disableConcurrentBuilds()
+  }
+
+  environment {
+    VELORA_TARGET   = 'http://127.0.0.1:8080/'
+    VELORA_PROFILE  = 'safe'
+    VELORA_DATA_DIR = "${WORKSPACE}/.velora"
+    VENV            = "${WORKSPACE}/.venv"
+  }
+
+  stages {
+    stage('Install Velora') {
+      steps {
+        sh '''
+          python3 -m venv "$VENV"
+          "$VENV/bin/pip" install --upgrade pip
+          "$VENV/bin/pip" install .
+        '''
+      }
+    }
+
+    stage('Start application under test') {
+      steps {
+        // Replace with however your application starts. It must listen on 127.0.0.1
+        // so the scan cannot leave the agent.
+        error('configure a start step for your application')
+      }
+    }
+
+    stage('Scan') {
+      steps {
+        sh '''
+          for _ in $(seq 1 30); do
+            curl -fsS "$VELORA_TARGET" >/dev/null 2>&1 && break
+            sleep 2
+          done
+          "$VENV/bin/velora" scan \
+            --target "$VELORA_TARGET" \
+            --profile "$VELORA_PROFILE" \
+            --scope 127.0.0.1 \
+            --allow-private \
+            --operator "jenkins" \
+            --i-am-authorized \
+            --scan-id-file velora-scan-id
+        '''
+        script {
+          env.VELORA_SCAN_ID = readFile('velora-scan-id').trim()
+        }
+      }
+    }
+
+    stage('Report') {
+      steps {
+        sh '''
+          "$VENV/bin/velora" report --scan "$VELORA_SCAN_ID" \
+            --format sarif --format json --format html \
+            --output-dir velora-reports
+        '''
+      }
+    }
+
+    stage('Security gate') {
+      steps {
+        script {
+          // Capture the exit status so FAIL and ERROR can be reported distinctly.
+          def status = sh(
+            returnStatus: true,
+            script: '''
+              "$VENV/bin/velora" gate evaluate \
+                --scan "$VELORA_SCAN_ID" \
+                --policy .velora/gate.yaml \
+                --output velora-reports/gate.json
+            ''')
+          if (status == 1) {
+            error("Velora security gate FAILED: the scan violated the gate policy. " +
+                  "See velora-reports/gate.json.")
+          } else if (status != 0) {
+            error("Velora security gate ERROR (exit ${status}): the scan was missing or " +
+                  "incomplete, or the policy is invalid. This is not a pass.")
+          }
+        }
+      }
+    }
+  }
+
+  post {
+    always {
+      archiveArtifacts artifacts: 'velora-reports/**', allowEmptyArchive: true
+      // A passing gate means no configured policy rule was violated. It does not mean
+      // the application is secure: Velora reports only what its checks observed.
+    }
+  }
+}

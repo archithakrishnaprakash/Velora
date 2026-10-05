@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block content %}
+<h1>Security checks</h1>
+<p class="lede">Every detector is a plugin with a declared category, severity and safe-mode
+  flag. Checks registered as safe run in the default SAFE profile; the rest require an
+  explicitly elevated profile on a target you control.</p>
+
+<div class="kpis">
+  {{ m.kpi("Registered checks", checks|length) }}
+  {{ m.kpi("Safe-profile checks", safe) }}
+  {{ m.kpi("Categories", by_category|length) }}
+</div>
+
+<div class="charts">
+  <div class="card"><h3>Checks per category</h3>
+    {{ charts.category_bars(by_category, label="check categories")|safe }}</div>
+</div>
+
+<h2>Catalog</h2>
+<div class="tw"><table>
+  <thead><tr><th>ID</th><th>Name</th><th>Category</th><th>Default severity</th>
+    <th>Safe profile</th><th>Description</th></tr></thead>
+  <tbody>
+  {% for c in checks %}
+    <tr><td class="mono">{{ c.id }}</td><td>{{ c.name }}</td><td>{{ c.category }}</td>
+      <td><span class="pill {{ c.severity.value|sevclass }}">{{ c.severity.value }}</span></td>
+      <td>{{ "yes" if c.safe_mode else "no" }}</td>
+      <td>{{ c.description|shorten(90) }}</td></tr>
+  {% else %}
+    <tr><td colspan="6" class="empty">No checks registered.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

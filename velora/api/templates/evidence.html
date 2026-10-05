@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block content %}
+<h1>Evidence</h1>
+<p class="lede">Every detection stores the request/response metadata that produced it.
+  Excerpts are redacted before storage — API keys, tokens, cookies and passwords are
+  never written to disk.</p>
+{{ m.scanpicker(scans, scan_id) }}
+{% if not scan_id %}{{ m.noscan(scans) }}{% else %}
+
+<div class="kpis">
+  {{ m.kpi("Evidence records", evidence|length) }}
+  {{ m.kpi("Distinct tests", by_test|length) }}
+  {{ m.kpi("Orphan records", evidence|rejectattr("finding_id")|list|length) }}
+</div>
+
+<div class="charts">
+  <div class="card"><h3>Evidence by test</h3>
+    {{ charts.category_bars(by_test, label="evidence by test")|safe }}</div>
+</div>
+
+<h2>Records</h2>
+<div class="tw"><table>
+  <thead><tr><th>Evidence</th><th>Test</th><th>Finding</th><th class="num">Status</th>
+    <th>Content type</th><th class="num">Size</th><th class="num">Confidence</th>
+    <th>Excerpt (redacted)</th></tr></thead>
+  <tbody>
+  {% for e in evidence %}
+    <tr><td class="mono">{{ e.id }}</td><td class="mono">{{ e.test_name or "—" }}</td>
+      <td class="mono">{% if e.finding_id and e.finding_id in findings %}
+          <a href="/findings/{{ e.finding_id }}">{{ findings[e.finding_id].title|shorten(28) }}</a>
+        {% else %}{{ e.finding_id or "—" }}{% endif %}</td>
+      <td class="num">{{ e.status_code if e.status_code is not none else "—" }}</td>
+      <td>{{ e.content_type|shorten(24) or "—" }}</td>
+      <td class="num">{{ e.response_size }}</td>
+      <td class="num">{{ "%.2f"|format(e.confidence) }}</td>
+      <td class="mono">{{ e.sanitized_excerpt|shorten(80) or "—" }}</td></tr>
+  {% else %}
+    <tr><td colspan="8" class="empty">No evidence recorded for this scan.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endif %}
+{% endblock %}

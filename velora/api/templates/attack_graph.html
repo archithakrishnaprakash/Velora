@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block content %}
+<h1>Attack graph</h1>
+<p class="lede">Nodes and edges carry an epistemic state. An <code>INFERRED</code> or
+  <code>HYPOTHESIZED</code> edge is a lead to investigate, not a demonstrated attack path.</p>
+{{ m.scanpicker(scans, scan_id) }}
+{% if not scan_id %}{{ m.noscan(scans) }}{% else %}
+
+<div class="kpis">
+  {{ m.kpi("Nodes", nodes|length) }}
+  {{ m.kpi("Edges", edges|length) }}
+  {{ m.kpi("Unvalidated edges", hypothetical, "var(--warning)") }}
+</div>
+
+{% if hypothetical %}
+<div class="banner warn">{{ hypothetical }} edge(s) are not observed facts. They are
+  reasoning hypotheses and require manual validation before being reported as a path.</div>
+{% endif %}
+
+<div class="charts">
+  <div class="card"><h3>Node kinds</h3>
+    {{ charts.category_bars(by_kind, label="node kinds")|safe }}</div>
+  <div class="card"><h3>Edge relations</h3>
+    {{ charts.category_bars(by_relation, label="edge relations")|safe }}</div>
+</div>
+
+<h2>Edges</h2>
+<div class="tw"><table>
+  <thead><tr><th>Source</th><th>Relation</th><th>Target</th><th>State</th>
+    <th class="num">Confidence</th><th>Asserted by</th></tr></thead>
+  <tbody>
+  {% for e in edges %}
+    <tr><td>{{ node_by_id[e.source_id].label|shorten(40) if e.source_id in node_by_id else e.source_id }}</td>
+      <td><span class="tag">{{ e.relation }}</span></td>
+      <td>{{ node_by_id[e.target_id].label|shorten(40) if e.target_id in node_by_id else e.target_id }}</td>
+      <td><span class="tag {{ 'ok' if not e.hypothesis else 'warn' }}">{{ e.validation_status.value }}</span></td>
+      <td class="num">{{ "%.2f"|format(e.confidence) }}</td>
+      <td class="mono">{{ e.source or "—" }}</td></tr>
+  {% else %}
+    <tr><td colspan="6" class="empty">No graph edges for this scan.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+
+<h2>Nodes</h2>
+<div class="tw"><table>
+  <thead><tr><th>Kind</th><th>Label</th><th>State</th><th class="num">Confidence</th>
+    <th>Reference</th></tr></thead>
+  <tbody>
+  {% for n in nodes %}
+    <tr><td><span class="tag">{{ n.kind }}</span></td><td>{{ n.label|shorten(72) }}</td>
+      <td>{{ n.validation_status.value }}</td>
+      <td class="num">{{ "%.2f"|format(n.confidence) }}</td>
+      <td class="mono">{{ n.ref_id or "—" }}</td></tr>
+  {% else %}
+    <tr><td colspan="5" class="empty">No graph nodes for this scan.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+
+<p class="lede">Machine-readable graph: <code>/api/scans/{{ scan_id }}/graph</code></p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block content %}
+<h1>Findings</h1>
+<p class="lede">Every finding is produced by a deterministic check and carries its own
+  evidence. <b>Potential</b> means observed-but-unvalidated; only a human reviewer can
+  move a finding to <b>Confirmed</b>.</p>
+
+<form class="filters" method="get" action="/findings">
+  <label for="scan">Scan</label>
+  <select name="scan" id="scan">
+    {% for s in scans %}
+      <option value="{{ s.id }}" {{ 'selected' if s.id == scan_id else '' }}>{{ s.id }}</option>
+    {% else %}<option value="">no scans recorded</option>{% endfor %}
+  </select>
+  <label for="severity">Severity</label>
+  <select name="severity" id="severity">
+    <option value="">all</option>
+    {% for sev in severities %}
+      <option value="{{ sev }}" {{ 'selected' if sev == severity else '' }}>{{ sev }}</option>
+    {% endfor %}
+  </select>
+  <label for="status">Status</label>
+  <select name="status" id="status">
+    <option value="">all</option>
+    {% for st in ["Potential", "Needs Review", "Confirmed", "Rejected", "Remediated"] %}
+      <option value="{{ st }}" {{ 'selected' if st == status else '' }}>{{ st }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit">Apply</button>
+</form>
+
+{% if not scan_id %}{{ m.noscan(scans) }}{% else %}
+<div class="charts">
+  <div class="card"><h3>By severity</h3>{{ charts.severity_bars(by_sev)|safe }}</div>
+  <div class="card"><h3>By lifecycle state</h3>
+    {{ charts.lifecycle_donut(by_status)|safe }}{{ m.legend_for(by_status) }}</div>
+</div>
+
+<h2>{{ findings|length }} finding(s)</h2>
+<div class="tw"><table>
+  <thead><tr><th class="num">Priority</th><th>Severity</th><th>CVSS</th><th>Title</th>
+    <th>Category</th><th>CWE</th><th>OWASP</th><th>Endpoint</th><th>Status</th>
+    <th>Detector</th></tr></thead>
+  <tbody>
+  {% for f in findings %}
+    <tr><td class="num"><b>{{ "%.0f"|format(f.priority_score or 0) }}</b></td>
+      <td><span class="pill {{ f.severity.value|sevclass }}">{{ f.severity.value }}</span></td>
+      <td class="num">{{ "%.1f"|format(f.cvss_base_score) if f.cvss_base_score is not none else "n/a" }}</td>
+      <td><a href="/findings/{{ f.id }}">{{ f.title|shorten(56) }}</a></td>
+      <td>{{ f.category }}</td>
+      <td class="mono">{{ f.cwe_id }}</td><td class="mono">{{ f.owasp_category }}</td>
+      <td class="mono">{{ f.endpoint|shorten(42) }}</td>
+      <td><span class="tag {{ 'ok' if f.status.value == 'Confirmed' else '' }}">{{ f.status.value }}</span></td>
+      <td class="mono">{{ f.scanner|shorten(26) }}</td></tr>
+  {% else %}
+    <tr><td colspan="10" class="empty">No findings match these filters.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+<p class="lede">No finding here means no detection by the checks that ran — it is not
+  evidence that the target is secure.</p>
+{% endif %}
+{% endblock %}

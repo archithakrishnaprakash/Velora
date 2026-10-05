@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block content %}
+<h1>Detection benchmark</h1>
+<p class="lede">Measured accuracy against ground-truth cases in a controlled lab. These
+  numbers describe Velora's performance <i>on this suite only</i> — they are not a
+  general detection-rate claim, and a detection outside the suite's coverage counts as
+  neither a true nor a false positive.</p>
+
+{% if latest %}
+<div class="kpis">
+  {{ m.kpi("Precision", "%.2f"|format(latest.precision)) }}
+  {{ m.kpi("Recall", "%.2f"|format(latest.recall)) }}
+  {{ m.kpi("F1", "%.2f"|format(latest.f1)) }}
+  {{ m.kpi("False-positive rate", "%.2f"|format(latest.false_positive_rate)) }}
+  {{ m.kpi("False-negative rate", "%.2f"|format(latest.false_negative_rate)) }}
+  {{ m.kpi("Coverage", "%.0f%%"|format(latest.detection_coverage * 100)) }}
+</div>
+
+{% set confusion = {"True positives": latest.true_positives,
+                    "True negatives": latest.true_negatives,
+                    "False positives": latest.false_positives,
+                    "False negatives": latest.false_negatives} %}
+<div class="charts">
+  <div class="card"><h3>Confusion counts</h3>
+    {{ charts.category_bars(confusion, label="confusion counts")|safe }}
+    <div class="cap">Suite <code>{{ latest.suite }}</code> ·
+      {{ latest.total_cases }} ground-truth case(s) · Velora {{ latest.velora_version }}.
+      A count of zero is omitted from the bars and shown in the table.</div>
+    {{ m.counts_table(confusion, "Outcome", "Cases") }}</div>
+  <div class="card"><h3>What this does not measure</h3>
+    <ul>
+      <li>Coverage is {{ "%.0f%%"|format(latest.detection_coverage * 100) }} — a
+        detection outside the suite's ground truth is counted as neither a true nor a
+        false positive, so it neither flatters nor penalises these figures.</li>
+      <li>Evidence completeness is
+        {{ "%.0f%%"|format(latest.evidence_completeness * 100) }}: the share of expected
+        detections that also produced every required piece of evidence.</li>
+      <li>These numbers describe this suite against this lab application. They are not a
+        detection rate for arbitrary web applications, and Velora does not extrapolate
+        one.</li>
+      <li>A case Velora has no check for cannot be scored here at all; it is a gap in
+        coverage, not a measured success.</li>
+    </ul></div>
+</div>
+
+<h2>Per-case results</h2>
+<div class="tw"><table>
+  <thead><tr><th>Case</th><th>Outcome</th><th>Detected</th><th>Detail</th></tr></thead>
+  <tbody>
+  {% for c in latest.per_case %}
+    <tr><td class="mono">{{ c.get("case_id", c.get("name", "—")) }}</td>
+      <td><span class="tag">{{ c.get("outcome", "—") }}</span></td>
+      <td>{{ "yes" if c.get("detected") else "no" }}</td>
+      <td class="mono">{{ c.get("detail", "")|shorten(90) }}</td></tr>
+  {% else %}
+    <tr><td colspan="4" class="empty">No per-case detail stored.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% else %}
+<div class="banner info">No benchmark run recorded. Run
+  <code>velora benchmark run --suite labshop --target &lt;lab-url&gt;</code>
+  against a lab application you control.</div>
+{% endif %}
+
+<h2>Runs</h2>
+<div class="tw"><table>
+  <thead><tr><th>ID</th><th>Suite</th><th>Target</th><th class="num">Cases</th>
+    <th class="num">Precision</th><th class="num">Recall</th><th class="num">F1</th>
+    <th>Created</th></tr></thead>
+  <tbody>
+  {% for b in runs %}
+    <tr><td class="mono">{{ b.id }}</td><td>{{ b.suite }}</td>
+      <td class="mono">{{ b.target_url|shorten(36) }}</td>
+      <td class="num">{{ b.total_cases }}</td>
+      <td class="num">{{ "%.2f"|format(b.precision) }}</td>
+      <td class="num">{{ "%.2f"|format(b.recall) }}</td>
+      <td class="num">{{ "%.2f"|format(b.f1) }}</td>
+      <td class="mono">{{ b.created_at.strftime("%Y-%m-%d %H:%M") }}</td></tr>
+  {% else %}
+    <tr><td colspan="8" class="empty">No benchmark runs.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+
+<h2>Ground-truth cases ({{ cases|length }})</h2>
+<div class="tw"><table>
+  <thead><tr><th>Suite</th><th>Case</th><th>Type</th><th>Path</th><th>Expected</th>
+    <th>Check</th><th>CWE</th></tr></thead>
+  <tbody>
+  {% for c in cases %}
+    <tr><td>{{ c.suite }}</td><td>{{ c.name }}</td><td>{{ c.vulnerability_type }}</td>
+      <td class="mono">{{ c.endpoint_path }}</td>
+      <td>{{ "detection" if c.expected_detection else "no detection" }}</td>
+      <td class="mono">{{ c.expected_check_id or "—" }}</td>
+      <td class="mono">{{ c.cwe_id }}</td></tr>
+  {% else %}
+    <tr><td colspan="7" class="empty">No cases loaded.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

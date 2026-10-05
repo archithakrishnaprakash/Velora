@@ -1,0 +1,26 @@
+# Example target/scope for DVWA (Damn Vulnerable Web Application) in an isolated lab.
+# Start DVWA locally (Docker):
+#   docker run --rm -it -p 8080:80 vulnerables/web-dvwa
+target:
+  name: DVWA Lab
+  url: http://dvwa.local:8080/
+  owner: security-lab
+  authorization_status: LAB_ONLY
+  authorization_note: "Isolated local lab; intentionally vulnerable app."
+
+scope:
+  allowed_domains: [dvwa.local]
+  allowed_ports: [8080, 80]
+  allowed_schemes: [http]
+  max_requests: 600
+  max_concurrency: 4
+  request_delay: 0.25
+  redirect_policy: same-scope
+  allow_private_targets: true
+
+scan:
+  profile: lab
+
+# CLI equivalent:
+#   velora scan --target http://dvwa.local:8080/ --profile lab \
+#     --scope dvwa.local --allow-private --operator you --i-am-authorized

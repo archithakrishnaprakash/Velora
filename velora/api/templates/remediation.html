@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block content %}
+<h1>Remediation</h1>
+<p class="lede">A fix is only <b>FIX_VERIFIED</b> when a retest actually covered the
+  affected endpoint and the detection no longer fires. Absence of a detection in an
+  uncovered retest is never treated as a verified fix.</p>
+
+<div class="kpis">
+  {{ m.kpi("Tracked findings", rows|length) }}
+  {{ m.kpi("Verified fixes", by_status.get("FIX_VERIFIED", 0), "var(--good)") }}
+  {{ m.kpi("Failed fixes", by_status.get("FIX_FAILED", 0), "var(--critical)") }}
+  {{ m.kpi("Regressions", by_status.get("REGRESSION_DETECTED", 0), "var(--warning)") }}
+</div>
+
+<div class="charts">
+  <div class="card"><h3>Remediation status</h3>
+    {{ charts.stacked_bar(by_status)|safe }}{{ m.legend_for(by_status) }}</div>
+</div>
+
+<h2>Actions</h2>
+<div class="tw"><table>
+  <thead><tr><th>Finding</th><th>Severity</th><th>Status</th><th>Owner</th>
+    <th class="num">Retests</th><th>Verified at</th><th>Note</th></tr></thead>
+  <tbody>
+  {% for row in rows %}
+    {% set a = row.action %}
+    <tr><td>{% if row.finding %}<a href="/findings/{{ a.finding_id }}">{{ row.finding.title|shorten(44) }}</a>
+        {% else %}<span class="mono">{{ a.finding_id }}</span>{% endif %}</td>
+      <td>{% if row.finding %}<span class="pill {{ row.finding.severity.value|sevclass }}">{{ row.finding.severity.value }}</span>{% else %}—{% endif %}</td>
+      <td><span class="tag {{ 'ok' if a.status.value == 'FIX_VERIFIED' else ('bad' if a.status.value in ('FIX_FAILED','REGRESSION_DETECTED') else '') }}">{{ a.status.value }}</span></td>
+      <td>{{ a.owner or "—" }}</td>
+      <td class="num">{{ row.retests|length }}</td>
+      <td class="mono">{{ a.verified_at.strftime("%Y-%m-%d %H:%M") if a.verified_at else "—" }}</td>
+      <td>{{ a.note|shorten(60) or "—" }}</td></tr>
+  {% else %}
+    <tr><td colspan="7" class="empty">No remediation actions opened.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+
+<h2>Status counts</h2>
+{{ m.counts_table(by_status, "Status", "Findings") }}
+{% endblock %}

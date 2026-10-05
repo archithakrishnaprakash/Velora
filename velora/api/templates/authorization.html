@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block content %}
+<h1>Authorization testing</h1>
+<p class="lede">Each row is one cell of the authorization matrix: identity × resource ×
+  expectation. Test identities store only an environment-variable <i>reference</i> —
+  credentials are never persisted. Where the expectation is unknown, Velora reports
+  INCONCLUSIVE rather than guessing.</p>
+{{ m.scanpicker(scans, scan_id) }}
+{% if not scan_id %}{{ m.noscan(scans) }}{% else %}
+
+<div class="kpis">
+  {{ m.kpi("Tests", tests|length) }}
+  {{ m.kpi("Weaknesses", weaknesses|length, "var(--critical)" if weaknesses else "") }}
+  {{ m.kpi("Identities", identities|length) }}
+</div>
+
+<div class="charts">
+  <div class="card"><h3>Outcomes</h3>
+    {{ charts.category_bars(outcomes, label="authorization outcomes")|safe }}
+    <div class="cap">AS_EXPECTED means the observed behaviour matched the declared
+      expectation, not that the control is provably correct.</div></div>
+  <div class="card"><h3>Tests per role</h3>
+    {{ charts.category_bars(by_role, label="roles")|safe }}</div>
+</div>
+
+<h2>Matrix</h2>
+<div class="tw"><table>
+  <thead><tr><th>Identity</th><th>Role</th><th>Method</th><th>Resource</th>
+    <th>Expected</th><th>Observed</th><th>Outcome</th><th class="num">Status</th>
+    <th>Notes</th></tr></thead>
+  <tbody>
+  {% for t in tests %}
+    <tr><td>{{ identities[t.identity_id].name if t.identity_id in identities else (t.identity_id or "anonymous") }}</td>
+      <td>{{ t.identity_role.value }}</td><td>{{ t.method }}</td>
+      <td class="mono">{{ t.url|shorten(46) }}</td>
+      <td>{{ t.expected.value }}</td><td>{{ t.observed.value }}</td>
+      <td><span class="tag {{ 'bad' if t.outcome.is_weakness else ('ok' if t.outcome.value == 'AS_EXPECTED' else 'warn') }}">
+        {{ t.outcome.value }}</span></td>
+      <td class="num">{{ t.status_code if t.status_code is not none else "—" }}</td>
+      <td>{{ t.notes|shorten(70) or "—" }}</td></tr>
+  {% else %}
+    <tr><td colspan="9" class="empty">No authorization tests for this scan.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+
+<h2>Test identities</h2>
+<div class="tw"><table>
+  <thead><tr><th>Name</th><th>Role</th><th>Scheme</th><th>Secret reference</th>
+    <th>Owned resources</th></tr></thead>
+  <tbody>
+  {% for i in identities.values() %}
+    <tr><td>{{ i.name }}</td><td>{{ i.role.value }}</td><td>{{ i.auth_scheme }}</td>
+      <td class="mono">{{ i.secret_ref or "— (anonymous)" }}</td>
+      <td class="mono">{{ i.owned_resource_hints|join(", ")|shorten(46) or "—" }}</td></tr>
+  {% else %}
+    <tr><td colspan="5" class="empty">No identities configured.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+<p class="lede">The secret reference is the <i>name</i> of an environment variable.
+  Velora reads the value at run time and never stores or prints it.</p>
+{% endif %}
+{% endblock %}

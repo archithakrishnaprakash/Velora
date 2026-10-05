@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block content %}
+<h1>Regression</h1>
+<p class="lede">Deltas between a baseline scan and the selected scan, matched on stable
+  finding fingerprints. A re-rated finding reads as <i>persisting</i>, not as fixed and
+  new.</p>
+{{ m.scanpicker(scans, scan_id) }}
+{% if not scan_id %}{{ m.noscan(scans) }}{% else %}
+
+<div class="kpis">
+  {{ m.kpi("Deltas", results|length) }}
+  {{ m.kpi("New findings", by_change.get("NEW_FINDING", 0), "var(--critical)") }}
+  {{ m.kpi("Fixed findings", by_change.get("FIXED_FINDING", 0), "var(--good)") }}
+  {{ m.kpi("Reintroduced", by_change.get("REINTRODUCED_FINDING", 0), "var(--warning)") }}
+</div>
+
+<div class="charts">
+  <div class="card"><h3>Change mix</h3>
+    {{ charts.category_bars(by_change, label="regression changes")|safe }}</div>
+  <div class="card"><h3>Severity of changed findings</h3>
+    {{ charts.severity_bars(by_sev)|safe }}</div>
+</div>
+
+<h2>Deltas</h2>
+<div class="tw"><table>
+  <thead><tr><th>Change</th><th>Subject</th><th>Severity</th><th>Baseline scan</th>
+    <th>Detail</th></tr></thead>
+  <tbody>
+  {% for x in results %}
+    <tr><td><span class="tag {{ 'bad' if x.change.value in ('NEW_FINDING','REINTRODUCED_FINDING') else ('ok' if x.change.value == 'FIXED_FINDING' else '') }}">{{ x.change.value }}</span></td>
+      <td class="mono">{{ x.subject|shorten(52) }}</td>
+      <td>{% if x.severity %}<span class="pill {{ x.severity|sevclass }}">{{ x.severity }}</span>{% else %}—{% endif %}</td>
+      <td class="mono">{{ x.previous_scan_id or "—" }}</td>
+      <td class="mono">{{ x.detail|string|shorten(70) }}</td></tr>
+  {% else %}
+    <tr><td colspan="5" class="empty">No regression results for this scan. Run
+      <code>velora regression compare --previous &lt;id&gt; --current {{ scan_id }}</code>.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block content %}
+<h1>Engagements</h1>
+<p class="lede">An engagement is a scoped body of authorized work. Authorization is
+  recorded as a reference (ticket or contract) and the name of the person who granted
+  it — never as a credential.</p>
+
+<div class="tw"><table>
+  <thead><tr><th>ID</th><th>Name</th><th>Client</th><th>Status</th><th>Operator</th>
+    <th>Authorization ref</th><th>Granted by</th><th>Window</th>
+    <th class="num">Scans</th><th class="num">Findings</th><th class="num">Identities</th></tr></thead>
+  <tbody>
+  {% for row in rows %}
+    {% set e = row.engagement %}
+    <tr><td class="mono">{{ e.id }}</td><td>{{ e.name }}</td><td>{{ e.client or "—" }}</td>
+      <td><span class="tag">{{ e.status.value }}</span></td>
+      <td>{{ e.operator or "—" }}</td>
+      <td class="mono">{{ e.authorization_reference or "—" }}</td>
+      <td>{{ e.authorization_granted_by or "—" }}</td>
+      <td class="mono">{{ (e.starts_at.strftime("%Y-%m-%d") if e.starts_at else "—") }}
+        → {{ (e.ends_at.strftime("%Y-%m-%d") if e.ends_at else "—") }}</td>
+      <td class="num">{{ row.scans }}</td><td class="num">{{ row.findings }}</td>
+      <td class="num">{{ row.identities }}</td></tr>
+  {% else %}
+    <tr><td colspan="11" class="empty">No engagements — create one with
+      <code>velora engagement create --name &lt;name&gt; --authorization-ref &lt;ref&gt;</code>.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

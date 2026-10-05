@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block content %}
+<h1>Security posture</h1>
+<p class="lede">The Velora Security Posture Score is Velora's own metric, not CVSS and
+  not an industry standard. A category Velora did not assess is reported as
+  <i>not assessed</i> — never scored as perfect.</p>
+
+{% if latest %}
+<div class="charts">
+  <div class="card"><h3>Latest score</h3>
+    {{ charts.posture_gauge(latest.overall, band)|safe }}
+    <div class="cap">Scan <code>{{ latest.scan_id }}</code> ·
+      methodology v{{ latest.methodology_version }}</div></div>
+  <div class="card"><h3>Score history</h3>
+    {{ charts.scan_sparkline(trend, label="posture score")|safe }}
+    <div class="cap">Oldest to newest snapshot. Comparable only within the same
+      methodology version.</div></div>
+</div>
+
+<h2>Explanation</h2>
+<p>{{ latest.explanation }}</p>
+
+<h2>Category scores</h2>
+<div class="charts">
+  <div class="card"><h3>Score by category</h3>
+    {{ charts.score_bars(latest.categories, label="posture categories")|safe }}
+    <div class="cap">Fixed 0–100 scale so a weak category cannot look strong just
+      because it is the best one present.</div></div>
+</div>
+<div class="tw"><table>
+  <thead><tr><th>Category</th><th class="num">Score</th></tr></thead>
+  <tbody>
+  {% for k, v in latest.categories.items()|sort %}
+    <tr><td>{{ k }}</td>
+      <td class="num">{% if v is none %}<span class="empty">not assessed</span>
+        {% else %}{{ "%.1f"|format(v) }}{% endif %}</td></tr>
+  {% else %}
+    <tr><td colspan="2" class="empty">No categories scored.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+
+<h2>Contributors</h2>
+<div class="tw"><table>
+  <thead><tr><th>Contributor</th><th>Detail</th></tr></thead>
+  <tbody>
+  {% for c in latest.contributors %}
+    <tr><td class="mono">{{ c.get("category", c.get("name", "—")) }}</td>
+      <td>{% for k, v in c.items() if k not in ("category", "name") %}
+            <span class="tag">{{ k }}: {{ v }}</span>
+          {% else %}—{% endfor %}</td></tr>
+  {% else %}
+    <tr><td colspan="2" class="empty">No contributors recorded.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% else %}
+<div class="banner info">No posture snapshot recorded. Run
+  <code>velora posture score --scan &lt;id&gt;</code>.</div>
+{% endif %}
+
+<h2>Snapshots</h2>
+<div class="tw"><table>
+  <thead><tr><th>ID</th><th>Scan</th><th class="num">Overall</th><th>Methodology</th>
+    <th>Created</th></tr></thead>
+  <tbody>
+  {% for p in snapshots %}
+    <tr><td class="mono">{{ p.id }}</td><td class="mono">{{ p.scan_id }}</td>
+      <td class="num">{{ "%.1f"|format(p.overall) }}</td>
+      <td class="mono">v{{ p.methodology_version }}</td>
+      <td class="mono">{{ p.created_at.strftime("%Y-%m-%d %H:%M") }}</td></tr>
+  {% else %}
+    <tr><td colspan="5" class="empty">No snapshots.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

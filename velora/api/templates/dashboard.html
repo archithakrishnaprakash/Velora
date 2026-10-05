@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block content %}
+<h1>Dashboard</h1>
+<p class="lede">Every figure below is read from the Velora database. Nothing is estimated.
+  A widget with no stored rows says so rather than showing a placeholder.</p>
+
+<div class="kpis">
+  {{ m.kpi("Targets in scope", targets|length) }}
+  {{ m.kpi("Scans", scans|length) }}
+  {{ m.kpi("Endpoints observed", endpoints) }}
+  {{ m.kpi("Findings", findings_total) }}
+  {{ m.kpi("Human-confirmed", confirmed) }}
+  {{ m.kpi("Critical", by_sev.get("Critical", 0), "var(--critical)") }}
+</div>
+
+<div class="charts">
+  <div class="card">
+    <h3>Security posture</h3>
+    {% if posture %}
+      {{ charts.posture_gauge(posture.overall, posture_band)|safe }}
+      <div class="cap">Snapshot {{ posture.id }} · methodology v{{ posture.methodology_version }}.
+        Unassessed categories are excluded, not scored as perfect.</div>
+    {% else %}
+      {{ charts.empty_state("no posture snapshot — run: velora posture score --scan <id>")|safe }}
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h3>Findings by severity</h3>
+    {{ charts.severity_bars(by_sev)|safe }}
+    <div class="cap">Severity is Velora's own rating, paired with CVSS only where a
+      vector was actually derived.</div>
+  </div>
+
+  <div class="card">
+    <h3>Finding lifecycle</h3>
+    {{ charts.lifecycle_donut(by_status)|safe }}
+    {{ m.legend_for(by_status) }}
+    <div class="cap">Only a human reviewer moves a finding to Confirmed.</div>
+  </div>
+
+  <div class="card">
+    <h3>Findings per scan</h3>
+    {{ charts.scan_sparkline(history)|safe }}
+    <div class="cap">Oldest to newest scan. A falling line is not evidence of a fix —
+      see <a href="/regression">Regression</a>.</div>
+  </div>
+
+  <div class="card">
+    <h3>Technology distribution</h3>
+    {{ charts.category_bars(technologies, label="technologies observed")|safe }}
+    <div class="cap">Fingerprints observed across all scans; version detection is
+      best-effort and never a CVE claim.</div>
+  </div>
+
+  <div class="card">
+    <h3>Remediation status</h3>
+    {{ charts.stacked_bar(rem_mix)|safe }}
+    {{ m.legend_for(rem_mix) }}
+    <div class="cap">Absence of a detection on retest is not by itself a verified fix.</div>
+  </div>
+</div>
+
+<div class="kpis">
+  {{ m.kpi("New findings (regression)", new_findings) }}
+  {{ m.kpi("Fixed findings (regression)", fixed_findings) }}
+  {{ m.kpi("Regression deltas", regressions_total) }}
+  {{ m.kpi("AI analyses", ai_total) }}
+  {% if benchmark %}
+    {{ m.kpi("Benchmark F1", "%.2f"|format(benchmark.f1)) }}
+    {{ m.kpi("Benchmark coverage", "%.0f%%"|format(benchmark.detection_coverage * 100)) }}
+  {% else %}
+    {{ m.kpi("Benchmark F1", none) }}
+    {{ m.kpi("Benchmark coverage", none) }}
+  {% endif %}
+</div>
+
+<h2>Scans</h2>
+<div class="tw"><table>
+  <thead><tr><th>Scan</th><th>Target</th><th>Profile</th><th>Status</th>
+    <th class="num">Findings</th><th>Started</th></tr></thead>
+  <tbody>
+  {% for s in scans %}
+    <tr><td><a href="/scans/{{ s.id }}">{{ s.id }}</a></td>
+        <td>{{ s.target_id }}</td><td>{{ s.profile.value }}</td>
+        <td>{{ s.status.value }}</td>
+        <td class="num">{{ s.stats.get("findings", "—") }}</td>
+        <td class="mono">{{ s.started_at.strftime("%Y-%m-%d %H:%M") if s.started_at else "—" }}</td></tr>
+  {% else %}
+    <tr><td colspan="6" class="empty">No scans yet — run <code>velora scan --target &lt;name&gt;</code>.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+
+<h2>Severity counts</h2>
+{{ m.counts_table(by_sev, "Severity", "Findings") }}
+{% endblock %}

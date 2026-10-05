@@ -1,0 +1,29 @@
+# Velora dashboard service (runs as a dedicated NON-root user).
+# Install:
+#   sudo useradd --system --home /opt/velora --shell /usr/sbin/nologin velora
+#   sudo cp systemd/velora.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now velora
+[Unit]
+Description=Velora dashboard (authorized security assessment)
+After=network.target
+
+[Service]
+Type=simple
+User=velora
+Group=velora
+WorkingDirectory=/opt/velora
+Environment=VELORA_DATA_DIR=/opt/velora/data
+Environment=VELORA_CONFIG_DIR=/opt/velora/config
+ExecStart=/opt/velora/venv/bin/velora dashboard --host 127.0.0.1 --port 8787
+Restart=on-failure
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/velora/data /opt/velora/config
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

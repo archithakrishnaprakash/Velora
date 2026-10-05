@@ -1,0 +1,98 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "velora"
+version = "2.0.0"
+description = "AI-Assisted Web Vulnerability Assessment & Security Testing Framework (authorized use only)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Architha Krishnaprakash" }]
+keywords = ["security", "vapt", "web-security", "pentest", "authorized-testing", "ai-security"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Information Technology",
+    "Topic :: Security",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+# Core runtime dependencies (all pure-python or widely packaged; installable on Kali via pip).
+dependencies = [
+    "click>=8.1",
+    "httpx>=0.27",
+    "beautifulsoup4>=4.12",
+    "pydantic>=2.6",
+    "jinja2>=3.1",
+    "pyyaml>=6.0",
+    "cryptography>=41.0",
+    "starlette>=0.37",
+    "uvicorn>=0.29",
+]
+
+[project.optional-dependencies]
+pdf = ["weasyprint>=61.0"]
+# Optional: swap the CLI/API/ORM to the "reference" stack named in the design docs.
+# The framework runs fully on the core deps above; these enable drop-in alternatives.
+reference-stack = ["typer>=0.12", "rich>=13.7", "fastapi>=0.110", "sqlalchemy>=2.0", "alembic>=1.13"]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=5.0",
+    "ruff>=0.4",
+    "black>=24.0",
+    "mypy>=1.9",
+    "respx>=0.21",
+    "types-PyYAML",
+]
+
+[project.scripts]
+velora = "velora.cli.main:main"
+
+[project.urls]
+Homepage = "https://github.com/architha/velora"
+Documentation = "https://github.com/architha/velora/tree/main/docs"
+
+[tool.setuptools.packages.find]
+include = ["velora*"]
+
+[tool.setuptools.package-data]
+velora = ["reporting/templates/*.html", "api/templates/*.html", "database/migrations/*.sql", "fingerprint/signatures/*.yaml"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra -q"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.coverage.run]
+source = ["velora"]
+omit = ["*/tests/*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["frontend", ".venv", "build", "dist"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "C4", "SIM"]
+ignore = ["S101", "B008", "E501", "S104"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "B"]
+"velora/integrations/*" = ["S603", "S607"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_ignores = false
+ignore_missing_imports = true
+disallow_untyped_defs = false
+check_untyped_defs = true
+exclude = ["tests/", "frontend/", "build/"]

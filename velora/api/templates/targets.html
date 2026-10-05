@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block content %}
+<h1>Targets</h1>
+<p class="lede">A target may only be scanned once its authorization status is recorded
+  and a scope policy is attached. Scope is enforced on every request, not at the
+  target level only.</p>
+
+<div class="tw"><table>
+  <thead><tr><th>ID</th><th>Name</th><th>URL</th><th>Authorization</th><th>Owner</th>
+    <th>Scope policy</th><th class="num">Scans</th><th>Last scan</th></tr></thead>
+  <tbody>
+  {% for row in rows %}
+    {% set t = row.target %}
+    <tr><td class="mono">{{ t.id }}</td><td>{{ t.name }}</td>
+      <td class="mono">{{ t.url|shorten(52) }}</td>
+      <td><span class="tag {{ 'ok' if t.authorization_status.value != 'UNAUTHORIZED' else 'bad' }}">
+        {{ t.authorization_status.value }}</span></td>
+      <td>{{ t.owner or "—" }}</td>
+      <td class="mono">{{ row.scope.id if row.scope else "none" }}</td>
+      <td class="num">{{ row.scans }}</td>
+      <td class="mono">{{ row.last_scan.strftime("%Y-%m-%d %H:%M") if row.last_scan else "—" }}</td></tr>
+  {% else %}
+    <tr><td colspan="8" class="empty">No targets — add one with
+      <code>velora target add --name &lt;name&gt; --url &lt;url&gt;</code>.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

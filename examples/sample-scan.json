@@ -1,0 +1,31 @@
+{
+  "_comment": "Illustrative shape of a Velora scan report (velora report --format json). Values are examples from the bundled local lab app, not a real target.",
+  "meta": {"tool": "Velora", "tool_version": "0.1.0", "operator": "analyst"},
+  "scan": {"id": "SCAN-AB12CD", "profile": "lab", "status": "completed",
+           "stats": {"requests": 35, "blocked_requests": 0, "endpoints": 5, "findings": 14, "correlations": 3}},
+  "target": {"name": "LabShop", "url": "http://127.0.0.1:8099/", "authorization_status": "LAB_ONLY"},
+  "summary": {"total_findings": 14, "by_severity": {"Critical": 0, "High": 2, "Medium": 5, "Low": 4, "Informational": 3}},
+  "findings": [
+    {
+      "id": "WEB-X2FXCY",
+      "title": "Credentials submitted over plaintext HTTP",
+      "category": "authentication",
+      "severity": "High",
+      "confidence": "Firm",
+      "status": "Confirmed",
+      "endpoint": "http://127.0.0.1:8099/login",
+      "priority_score": 76.7,
+      "impact": "Affects the confidentiality/integrity of authentication.",
+      "remediation": "Serve and submit all authentication forms exclusively over HTTPS.",
+      "cvss": "Not Assessed",
+      "evidence": [{"test_name": "auth.indicators", "excerpt": "POST /login contains a password field over HTTP.", "confidence": 0.7}],
+      "validated_by": "analyst"
+    }
+  ],
+  "attack_path_hypotheses": [
+    {"title": "Credential / session interception",
+     "path": ["Credentials over plaintext / weak transport", "Insecure session cookie", "Session hijack"],
+     "hypothesis": true}
+  ],
+  "limitations": ["Automated checks detect indicators; they do not prove exploitability."]
+}

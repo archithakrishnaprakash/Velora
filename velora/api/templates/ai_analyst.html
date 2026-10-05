@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block content %}
+<h1>AI analyst</h1>
+<p class="lede">The AI layer interprets stored evidence. It cannot change scope, run
+  commands, exploit anything, or mark a finding as Confirmed. Its confidence is capped
+  by the deterministic evidence matrix, and every prompt is sanitised against
+  injection from scanned page content.</p>
+{{ m.scanpicker(scans, scan_id) }}
+{% if not scan_id %}{{ m.noscan(scans) }}{% else %}
+
+<div class="kpis">
+  {{ m.kpi("Analyses", analyses|length) }}
+  {{ m.kpi("Require human validation", analyses|selectattr("human_validation_required")|list|length) }}
+  {{ m.kpi("Unsanitised prompts", unsanitized, "var(--critical)" if unsanitized else "") }}
+</div>
+
+{% if unsanitized %}
+<div class="banner warn">{{ unsanitized }} analysis record(s) were produced without
+  prompt sanitisation. Treat their reasoning as untrusted.</div>
+{% endif %}
+
+<div class="charts">
+  <div class="card"><h3>Epistemic state</h3>
+    {{ charts.lifecycle_donut(by_state)|safe }}{{ m.legend_for(by_state) }}
+    <div class="cap">HYPOTHESIZED is the ceiling for AI-only reasoning; VALIDATED is
+      reserved for human confirmation.</div></div>
+  <div class="card"><h3>Provider</h3>
+    {{ charts.category_bars(by_provider, label="providers")|safe }}</div>
+</div>
+
+<h2>Analyses</h2>
+<div class="tw"><table>
+  <thead><tr><th>ID</th><th>Finding</th><th>Classification</th><th>State</th>
+    <th class="num">Confidence</th><th class="num">Support</th><th class="num">Contra</th>
+    <th class="num">Missing</th><th>Recommended validation</th></tr></thead>
+  <tbody>
+  {% for a in analyses %}
+    <tr><td class="mono">{{ a.id }}</td>
+      <td class="mono">{% if a.finding_id %}<a href="/findings/{{ a.finding_id }}">{{ a.finding_id }}</a>{% else %}scan-level{% endif %}</td>
+      <td>{{ a.classification|shorten(30) or "—" }}</td>
+      <td><span class="tag">{{ a.validation_status.value }}</span></td>
+      <td class="num">{{ "%.2f"|format(a.confidence) }}</td>
+      <td class="num">{{ a.supporting_evidence|length }}</td>
+      <td class="num">{{ a.contradicting_evidence|length }}</td>
+      <td class="num">{{ a.missing_evidence|length }}</td>
+      <td>{{ a.recommended_validation|shorten(64) or "—" }}</td></tr>
+  {% else %}
+    <tr><td colspan="9" class="empty">No AI analyses for this scan.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endif %}
+{% endblock %}
